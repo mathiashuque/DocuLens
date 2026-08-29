@@ -1,18 +1,16 @@
-"""OpenAI structured-output adapter.
+"""OpenAI structured-output adapter for generic analysis.
 
-Uses the Responses API's `responses.parse(..., text_format=<PydanticModel>)`
-so the SDK handles schema conversion and parsing. The client is constructed
-lazily (first call), never at import time, so app import/health/tests never
-require an API key. The actual SDK call/exception-mapping is shared with the
-analysis adapter via `agent.llm.structured_openai`.
+Mirrors `agent.classification.providers.openai_provider`: lazy client
+construction (never at import time), and the actual SDK call/exception
+mapping shared via `agent.llm.structured_openai.complete_structured`.
 """
 
-from agent.classification.provider import ProviderMetadata, ProviderUnavailableError
-from agent.classification.types import ClassificationCandidate
+from agent.analysis.provider import ProviderMetadata, ProviderUnavailableError
+from agent.analysis.types import GenericAnalysisCandidate, RepairCandidate
 from agent.llm.structured_openai import complete_structured
 
 
-class OpenAIClassificationProvider:
+class OpenAIAnalysisProvider:
     def __init__(
         self,
         *,
@@ -22,7 +20,7 @@ class OpenAIClassificationProvider:
         max_output_tokens: int,
     ) -> None:
         if not api_key:
-            raise ProviderUnavailableError("Classification provider is not configured.")
+            raise ProviderUnavailableError("Analysis provider is not configured.")
         self._api_key = api_key
         self._model = model
         self._timeout_seconds = timeout_seconds
@@ -35,21 +33,35 @@ class OpenAIClassificationProvider:
                 from openai import OpenAI
             except ImportError as exc:  # pragma: no cover - dependency always installed
                 raise ProviderUnavailableError(
-                    "Classification provider dependency is unavailable."
+                    "Analysis provider dependency is unavailable."
                 ) from exc
             self._client = OpenAI(api_key=self._api_key, timeout=self._timeout_seconds)
         return self._client
 
-    async def classify(
+    async def extract(
         self, *, system_instruction: str, user_content: str
-    ) -> tuple[ClassificationCandidate, ProviderMetadata]:
+    ) -> tuple[GenericAnalysisCandidate, ProviderMetadata]:
         client = self._get_client()
         return await complete_structured(
             client,
             model=self._model,
             system_instruction=system_instruction,
             user_content=user_content,
-            output_type=ClassificationCandidate,
+            output_type=GenericAnalysisCandidate,
+            max_output_tokens=self._max_output_tokens,
+            provider_name="openai",
+        )
+
+    async def repair(
+        self, *, system_instruction: str, user_content: str
+    ) -> tuple[RepairCandidate, ProviderMetadata]:
+        client = self._get_client()
+        return await complete_structured(
+            client,
+            model=self._model,
+            system_instruction=system_instruction,
+            user_content=user_content,
+            output_type=RepairCandidate,
             max_output_tokens=self._max_output_tokens,
             provider_name="openai",
         )

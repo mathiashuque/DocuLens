@@ -87,6 +87,39 @@ def load_classification_settings() -> ClassificationSettings:
 
 
 @dataclass(frozen=True)
+class AnalysisSettings:
+    """Generic analysis provider/model/context configuration.
+
+    Read lazily at the analysis boundary only; never at app import,
+    `/health`, or GET analysis.
+    """
+
+    api_key: str | None
+    model: str
+    timeout_seconds: float
+    max_output_tokens: int
+    budget_chars: int
+
+
+DEFAULT_ANALYSIS_MODEL = "gpt-4o-mini"
+DEFAULT_ANALYSIS_TIMEOUT_SECONDS = 60.0
+DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS = 2000
+DEFAULT_ANALYSIS_BUDGET_CHARS = 12000
+
+
+def load_analysis_settings() -> AnalysisSettings:
+    return AnalysisSettings(
+        api_key=os.environ.get("OPENAI_API_KEY") or None,
+        model=os.environ.get("ANALYSIS_MODEL", DEFAULT_ANALYSIS_MODEL),
+        timeout_seconds=DEFAULT_ANALYSIS_TIMEOUT_SECONDS,
+        max_output_tokens=DEFAULT_ANALYSIS_MAX_OUTPUT_TOKENS,
+        budget_chars=_positive_int(
+            "ANALYSIS_BUDGET_CHARS", DEFAULT_ANALYSIS_BUDGET_CHARS
+        ),
+    )
+
+
+@dataclass(frozen=True)
 class DatabaseSettings:
     """Canonical application database connection setting.
 
