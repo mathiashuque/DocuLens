@@ -1,0 +1,52 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
+    environment:
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      MAX_DOCUMENT_PAGES: ${MAX_DOCUMENT_PAGES:-40}
+      # Database connection components, provided for the next implementation
+      # slice. No current API code reads these; nothing is wired to Postgres yet.
+      POSTGRES_HOST: db
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: ${POSTGRES_DB:-doculens}
+      POSTGRES_USER: ${POSTGRES_USER:-doculens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-doculens_local_only}
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-doculens}
+      POSTGRES_USER: ${POSTGRES_USER:-doculens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-doculens_local_only}
+    volumes:
+      - doculens_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-doculens} -d ${POSTGRES_DB:-doculens}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    # Not published to the host by default; local tooling that needs a direct
+    # connection can set POSTGRES_HOST_PORT and add a "ports" mapping.
+
+volumes:
+  doculens_pgdata:
