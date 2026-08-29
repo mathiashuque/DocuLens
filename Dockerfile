@@ -22,6 +22,11 @@ RUN pip install --no-cache-dir ./apps/api
 # `app` package so PYTHONPATH resolves them without a second install step.
 COPY ingestion ingestion
 
+# Migration config/history. Not run at container start; see README for the
+# explicit `alembic ... upgrade head` command used for local dev/CI/deploy.
+COPY apps/api/alembic.ini apps/api/alembic.ini
+COPY apps/api/migrations apps/api/migrations
+
 RUN useradd --create-home --uid 10001 --shell /usr/sbin/nologin appuser \
     && chown -R appuser:appuser /code
 USER appuser
