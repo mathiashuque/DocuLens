@@ -39,6 +39,54 @@ def load_upload_settings() -> UploadSettings:
 
 
 @dataclass(frozen=True)
+class ClassificationSettings:
+    """Classification provider/model/threshold configuration.
+
+    Read lazily at the classification boundary only; never at app import,
+    `/health`, or GET classification, so a missing key never breaks
+    unrelated requests.
+    """
+
+    api_key: str | None
+    model: str
+    confidence_threshold: float
+    timeout_seconds: float
+    max_output_tokens: int
+
+
+DEFAULT_CLASSIFICATION_MODEL = "gpt-4o-mini"
+DEFAULT_CLASSIFICATION_CONFIDENCE_THRESHOLD = 0.65
+DEFAULT_CLASSIFICATION_TIMEOUT_SECONDS = 30.0
+DEFAULT_CLASSIFICATION_MAX_OUTPUT_TOKENS = 800
+
+
+def _float_in_unit_interval(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    try:
+        value = float(raw)
+    except ValueError as exc:
+        raise InvalidConfigurationError(f"{name} must be a number.") from exc
+    if not 0.0 <= value <= 1.0:
+        raise InvalidConfigurationError(f"{name} must be within [0, 1].")
+    return value
+
+
+def load_classification_settings() -> ClassificationSettings:
+    return ClassificationSettings(
+        api_key=os.environ.get("OPENAI_API_KEY") or None,
+        model=os.environ.get("CLASSIFICATION_MODEL", DEFAULT_CLASSIFICATION_MODEL),
+        confidence_threshold=_float_in_unit_interval(
+            "CLASSIFICATION_CONFIDENCE_THRESHOLD",
+            DEFAULT_CLASSIFICATION_CONFIDENCE_THRESHOLD,
+        ),
+        timeout_seconds=DEFAULT_CLASSIFICATION_TIMEOUT_SECONDS,
+        max_output_tokens=DEFAULT_CLASSIFICATION_MAX_OUTPUT_TOKENS,
+    )
+
+
+@dataclass(frozen=True)
 class DatabaseSettings:
     """Canonical application database connection setting.
 

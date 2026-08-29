@@ -27,6 +27,7 @@ async def test_upgrade_head_creates_expected_tables(postgres_url: str) -> None:
     assert "documents" in table_names
     assert "document_pages" in table_names
     assert "document_sections" in table_names
+    assert "document_classifications" in table_names
 
 
 def test_downgrade_then_upgrade_round_trip(postgres_url: str) -> None:
@@ -121,6 +122,32 @@ def test_document_section_migration_preserves_existing_document_rows(
     try:
         config = Config(str(ALEMBIC_INI))
         command.downgrade(config, "0001")
+        command.upgrade(config, "head")
+    finally:
+        if previous is None:
+            os.environ.pop("DATABASE_URL", None)
+        else:
+            os.environ["DATABASE_URL"] = previous
+
+    document_count, page_count, section_count = _row_counts(postgres_url, document_id)
+    assert document_count == 1
+    assert page_count == 1
+    assert section_count == 0
+
+
+def test_document_classification_migration_preserves_existing_document_rows(
+    postgres_url: str,
+) -> None:
+    """Downgrading only the classification table's own revision must not
+    touch existing document/page rows, and re-upgrading fabricates nothing."""
+    document_id = uuid.uuid4()
+    _insert_document_and_page(postgres_url, document_id)
+
+    previous = os.environ.get("DATABASE_URL")
+    os.environ["DATABASE_URL"] = postgres_url
+    try:
+        config = Config(str(ALEMBIC_INI))
+        command.downgrade(config, "0002")
         command.upgrade(config, "head")
     finally:
         if previous is None:
