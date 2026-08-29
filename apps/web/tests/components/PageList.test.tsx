@@ -29,6 +29,20 @@ describe("PageList", () => {
     expect(screen.getByText("No text extracted from this page.")).toBeInTheDocument();
   });
 
+  it("gives each page a stable anchor derived from its page number", () => {
+    render(
+      <PageList
+        pages={[
+          { page_number: 1, text: "First" },
+          { page_number: 7, text: "Seventh" },
+        ]}
+      />
+    );
+
+    expect(document.getElementById("page-1")).toBeInTheDocument();
+    expect(document.getElementById("page-7")).toBeInTheDocument();
+  });
+
   it("renders page text that looks like HTML/script as inert text", () => {
     render(
       <PageList pages={[{ page_number: 1, text: "<img src=x onerror=alert(1)>" }]} />

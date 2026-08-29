@@ -31,6 +31,22 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+    ports:
+      - "${WEB_HOST_PORT:-3000}:3000"
+    environment:
+      # `api` is the in-network service name; the web app never reaches the
+      # backend via localhost. Never prefix with NEXT_PUBLIC_ — the browser
+      # must never see this.
+      DOCULENS_API_BASE_URL: http://api:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
   db:
     image: pgvector/pgvector:pg16
     environment:

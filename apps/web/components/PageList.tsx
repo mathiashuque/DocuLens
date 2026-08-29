@@ -1,4 +1,5 @@
 import type { DocumentPage } from "@/lib/document-schema";
+import { pageAnchorId } from "@/lib/analysis-evidence";
 
 export function PageList({ pages }: { pages: DocumentPage[] }) {
   return (
@@ -11,7 +12,8 @@ export function PageList({ pages }: { pages: DocumentPage[] }) {
         {pages.map((page) => (
           <li
             key={page.page_number}
-            className="rounded-md border border-zinc-200 bg-white p-4"
+            id={pageAnchorId(page.page_number)}
+            className="scroll-mt-6 rounded-md border border-zinc-200 bg-white p-4"
           >
             <h3 className="text-sm font-semibold text-zinc-900">
               Page {page.page_number}
