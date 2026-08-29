@@ -3,20 +3,9 @@ import "server-only";
 import { getBackendBaseUrl } from "./backend-config";
 import { documentSchema, type Document } from "./document-schema";
 import { BackendError } from "./errors";
+import { parseJsonSafely } from "./http";
 
 const REQUEST_TIMEOUT_MS = 30_000;
-
-async function parseJsonSafely(response: Response): Promise<unknown> {
-  const text = await response.text();
-  if (!text) {
-    return undefined;
-  }
-  try {
-    return JSON.parse(text);
-  } catch {
-    return undefined;
-  }
-}
 
 /**
  * Retrieves one persisted document from FastAPI. Used only from Server

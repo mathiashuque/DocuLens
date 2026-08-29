@@ -20,6 +20,7 @@ RUN pip install --no-cache-dir ./apps/api
 
 # Root-level packages imported by the API, kept separate from the installed
 # `app` package so PYTHONPATH resolves them without a second install step.
+COPY agent agent
 COPY ingestion ingestion
 
 # Migration config/history. Not run at container start; see README for the
