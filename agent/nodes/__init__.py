@@ -1,2 +1,1 @@
 """Reusable analysis graph nodes."""
-

@@ -1,2 +1,1 @@
 """Persistence models package."""
-
