@@ -19,6 +19,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from agent.analysis.taxonomy import ALLOWED_IMPORTANCE, ALLOWED_SEVERITY
 from agent.classification.taxonomy import ALLOWED_DOCUMENT_TYPES
+from agent.extractors.contract.taxonomy import ALLOWED_CLAUSE_CATEGORIES
 from app.models.base import Base
 
 
@@ -251,6 +252,26 @@ class DocumentAnalysis(Base):
         cascade="all, delete-orphan",
         order_by="AnalysisRisk.ordinal",
     )
+    contract_parties: Mapped[list["ContractParty"]] = relationship(
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="ContractParty.ordinal",
+    )
+    contract_obligations: Mapped[list["ContractObligation"]] = relationship(
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="ContractObligation.ordinal",
+    )
+    contract_payment_terms: Mapped[list["ContractPaymentTerm"]] = relationship(
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="ContractPaymentTerm.ordinal",
+    )
+    contract_clauses: Mapped[list["ContractClause"]] = relationship(
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="ContractClause.ordinal",
+    )
 
 
 class AnalysisFinding(Base):
@@ -396,3 +417,178 @@ class AnalysisRiskEvidence(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
 
     risk: Mapped["AnalysisRisk"] = relationship(back_populates="evidence")
+
+
+class ContractParty(Base):
+    __tablename__ = "contract_parties"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "ordinal", name="uq_contract_parties_analysis_ordinal"
+        ),
+        CheckConstraint("ordinal > 0", name="ck_contract_parties_ordinal_positive"),
+        CheckConstraint(
+            "source_page > 0", name="ck_contract_parties_source_page_positive"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_contract_parties_confidence_range",
+        ),
+        CheckConstraint(
+            "char_length(name) > 0", name="ck_contract_parties_name_nonempty"
+        ),
+        CheckConstraint(
+            "char_length(evidence) > 0", name="ck_contract_parties_evidence_nonempty"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    role: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    source_page: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    analysis: Mapped["DocumentAnalysis"] = relationship(
+        back_populates="contract_parties"
+    )
+
+
+class ContractObligation(Base):
+    __tablename__ = "contract_obligations"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "ordinal", name="uq_contract_obligations_analysis_ordinal"
+        ),
+        CheckConstraint("ordinal > 0", name="ck_contract_obligations_ordinal_positive"),
+        CheckConstraint(
+            "source_page > 0", name="ck_contract_obligations_source_page_positive"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_contract_obligations_confidence_range",
+        ),
+        CheckConstraint(
+            "char_length(description) > 0",
+            name="ck_contract_obligations_description_nonempty",
+        ),
+        CheckConstraint(
+            "char_length(evidence) > 0",
+            name="ck_contract_obligations_evidence_nonempty",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    obligated_party: Mapped[str | None] = mapped_column(Text, nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    beneficiary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    conditions: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    source_page: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    analysis: Mapped["DocumentAnalysis"] = relationship(
+        back_populates="contract_obligations"
+    )
+
+
+class ContractPaymentTerm(Base):
+    __tablename__ = "contract_payment_terms"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "ordinal", name="uq_contract_payment_terms_analysis_ordinal"
+        ),
+        CheckConstraint(
+            "ordinal > 0", name="ck_contract_payment_terms_ordinal_positive"
+        ),
+        CheckConstraint(
+            "source_page > 0", name="ck_contract_payment_terms_source_page_positive"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_contract_payment_terms_confidence_range",
+        ),
+        CheckConstraint(
+            "char_length(evidence) > 0",
+            name="ck_contract_payment_terms_evidence_nonempty",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    payer: Mapped[str | None] = mapped_column(Text, nullable=True)
+    payee: Mapped[str | None] = mapped_column(Text, nullable=True)
+    amount_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    schedule_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_page: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    analysis: Mapped["DocumentAnalysis"] = relationship(
+        back_populates="contract_payment_terms"
+    )
+
+
+class ContractClause(Base):
+    __tablename__ = "contract_clauses"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "ordinal", name="uq_contract_clauses_analysis_ordinal"
+        ),
+        CheckConstraint("ordinal > 0", name="ck_contract_clauses_ordinal_positive"),
+        CheckConstraint(
+            "source_page > 0", name="ck_contract_clauses_source_page_positive"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_contract_clauses_confidence_range",
+        ),
+        CheckConstraint(
+            "category IN ("
+            + ", ".join(f"'{value}'" for value in ALLOWED_CLAUSE_CATEGORIES)
+            + ")",
+            name="ck_contract_clauses_category_valid",
+        ),
+        CheckConstraint(
+            "char_length(title) > 0", name="ck_contract_clauses_title_nonempty"
+        ),
+        CheckConstraint(
+            "char_length(evidence) > 0", name="ck_contract_clauses_evidence_nonempty"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    conditions: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    notice_period_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_page: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    analysis: Mapped["DocumentAnalysis"] = relationship(
+        back_populates="contract_clauses"
+    )

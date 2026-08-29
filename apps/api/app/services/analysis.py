@@ -20,6 +20,9 @@ from agent.analysis.result import AnalysisFailedError
 from agent.analysis.state import AnalysisState
 from agent.analysis.taxonomy import GENERIC_EXTRACTOR
 from agent.classification.taxonomy import DocumentType
+from agent.extractors.contract.context import SectionSpan
+from agent.extractors.contract.providers.openai_provider import OpenAIContractProvider
+from agent.extractors.contract.taxonomy import CONTRACT_EXTRACTOR
 from app.core.config import AnalysisSettings, load_analysis_settings
 from app.db.analysis_repository import AnalysisRepository
 from app.db.repository import DocumentRepository
@@ -44,6 +47,20 @@ def _build_provider(settings: AnalysisSettings) -> OpenAIAnalysisProvider:
     if not settings.api_key:
         raise ProviderUnavailableError("Analysis provider is not configured.")
     return OpenAIAnalysisProvider(
+        api_key=settings.api_key,
+        model=settings.model,
+        timeout_seconds=settings.timeout_seconds,
+        max_output_tokens=settings.max_output_tokens,
+    )
+
+
+def _build_contract_provider(settings: AnalysisSettings) -> OpenAIContractProvider:
+    """Reuses the same model/timeout/token configuration as the generic
+    analysis provider; the contract route does not warrant a second set of
+    provider settings."""
+    if not settings.api_key:
+        raise ProviderUnavailableError("Contract provider is not configured.")
+    return OpenAIContractProvider(
         api_key=settings.api_key,
         model=settings.model,
         timeout_seconds=settings.timeout_seconds,
@@ -78,6 +95,14 @@ async def analyze(document_id: uuid.UUID, session: AsyncSession) -> DocumentAnal
 
     pages = [(page.page_number, page.text) for page in document.pages]
     section_titles = [section.title for section in document.sections]
+    sections = [
+        SectionSpan(
+            title=section.title,
+            page_start=section.page_start,
+            page_end=section.page_end,
+        )
+        for section in document.sections
+    ]
     document_type = cast(DocumentType, classification.document_type)
 
     initial_state: AnalysisState = {
@@ -85,11 +110,14 @@ async def analyze(document_id: uuid.UUID, session: AsyncSession) -> DocumentAnal
         "filename": document.filename,
         "pages": pages,
         "section_titles": section_titles,
+        "sections": sections,
         "provider": provider,
         "budget_chars": settings.budget_chars,
         "document_type": document_type,
         "classification_confidence": classification.confidence,
     }
+    if document_type == "contract":
+        initial_state["contract_provider"] = _build_contract_provider(settings)
 
     final_state = await run_analysis_graph(initial_state)
     result = final_state.get("result")
@@ -98,10 +126,13 @@ async def analyze(document_id: uuid.UUID, session: AsyncSession) -> DocumentAnal
             final_state.get("failure_reason") or "Analysis failed."
         )
 
+    extractor = (
+        CONTRACT_EXTRACTOR if result.specialized is not None else GENERIC_EXTRACTOR
+    )
     return await analysis_repository.create(
         document_id=document_id,
         document_type=classification.document_type,
-        extractor=GENERIC_EXTRACTOR,
+        extractor=extractor,
         result=result,
     )
 

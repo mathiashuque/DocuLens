@@ -67,16 +67,79 @@ class RiskResponse(BaseModel):
     confidence: float
 
 
+class PartyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    role: str | None
+    source_page: int
+    evidence: str
+    confidence: float
+
+
+class ObligationResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    obligated_party: str | None
+    description: str
+    beneficiary: str | None
+    conditions: list[str]
+    source_page: int
+    evidence: str
+    confidence: float
+
+
+class PaymentTermResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    payer: str | None
+    payee: str | None
+    amount_text: str | None
+    schedule_text: str | None
+    source_page: int
+    evidence: str
+    confidence: float
+
+
+class ClauseResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    description: str
+    conditions: list[str]
+    notice_period_text: str | None
+    source_page: int
+    evidence: str
+    confidence: float
+
+
+class ContractAnalysisResponse(BaseModel):
+    type: Literal["contract"] = "contract"
+    extractor: Literal["contract_terms"] = "contract_terms"
+    parties: list[PartyResponse]
+    obligations: list[ObligationResponse]
+    payment_terms: list[PaymentTermResponse]
+    renewal_terms: list[ClauseResponse]
+    termination_terms: list[ClauseResponse]
+    liability_terms: list[ClauseResponse]
+    confidentiality_terms: list[ClauseResponse]
+
+
 class AnalysisResponse(BaseModel):
     id: uuid.UUID
     document_id: uuid.UUID
     document_type: DocumentType
-    extractor: Literal["generic"]
+    extractor: Literal["generic", "contract_terms"]
     status: Literal["completed"]
     summary: AnalysisSummaryResponse
     findings: list[FindingResponse]
     important_dates: list[ImportantDateResponse]
     risks: list[RiskResponse]
+    specialized_analysis: ContractAnalysisResponse | None = None
     provider: str
     model: str
     created_at: datetime
@@ -87,8 +150,48 @@ class AnalysisResponse(BaseModel):
 
         A plain `model_validate(..., from_attributes=True)` cannot map the
         row's flat `summary_*` columns onto the nested `summary` object, so
-        this assembles it explicitly.
+        this assembles it explicitly. `specialized_analysis` is populated
+        only when the row's `extractor` is `contract_terms`; other
+        classifications never carry contract child rows.
         """
+        specialized_analysis = None
+        if analysis.extractor == "contract_terms":  # type: ignore[attr-defined]
+            clauses = list(analysis.contract_clauses)  # type: ignore[attr-defined]
+            specialized_analysis = ContractAnalysisResponse(
+                parties=[
+                    PartyResponse.model_validate(party)
+                    for party in analysis.contract_parties  # type: ignore[attr-defined]
+                ],
+                obligations=[
+                    ObligationResponse.model_validate(obligation)
+                    for obligation in analysis.contract_obligations  # type: ignore[attr-defined]
+                ],
+                payment_terms=[
+                    PaymentTermResponse.model_validate(term)
+                    for term in analysis.contract_payment_terms  # type: ignore[attr-defined]
+                ],
+                renewal_terms=[
+                    ClauseResponse.model_validate(clause)
+                    for clause in clauses
+                    if clause.category == "renewal"
+                ],
+                termination_terms=[
+                    ClauseResponse.model_validate(clause)
+                    for clause in clauses
+                    if clause.category == "termination"
+                ],
+                liability_terms=[
+                    ClauseResponse.model_validate(clause)
+                    for clause in clauses
+                    if clause.category == "liability"
+                ],
+                confidentiality_terms=[
+                    ClauseResponse.model_validate(clause)
+                    for clause in clauses
+                    if clause.category == "confidentiality"
+                ],
+            )
+
         return cls(
             id=analysis.id,  # type: ignore[attr-defined]
             document_id=analysis.document_id,  # type: ignore[attr-defined]
@@ -113,6 +216,7 @@ class AnalysisResponse(BaseModel):
                 RiskResponse.model_validate(risk)
                 for risk in analysis.risks  # type: ignore[attr-defined]
             ],
+            specialized_analysis=specialized_analysis,
             provider=analysis.provider,  # type: ignore[attr-defined]
             model=analysis.model,  # type: ignore[attr-defined]
             created_at=analysis.created_at,  # type: ignore[attr-defined]

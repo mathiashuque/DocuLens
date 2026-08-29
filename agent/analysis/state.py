@@ -19,12 +19,32 @@ from agent.analysis.types import (
 )
 from agent.classification.context import ClassificationContext
 from agent.classification.taxonomy import DocumentType
+from agent.extractors.contract.context import SectionSpan
+from agent.extractors.contract.provider import (
+    ProviderMetadata as ContractProviderMetadata,
+)
+from agent.extractors.contract.provider import StructuredContractProvider
+from agent.extractors.contract.result import ContractAnalysisResult
+from agent.extractors.contract.types import (
+    ClauseCandidate,
+    ObligationCandidate,
+    PartyCandidate,
+    PaymentTermCandidate,
+)
 
 AnalysisStatus = Literal["pending", "completed", "failed"]
 
 
 class InvalidItem(TypedDict):
-    kind: Literal["finding", "date", "risk"]
+    kind: Literal[
+        "finding",
+        "date",
+        "risk",
+        "party",
+        "obligation",
+        "payment_term",
+        "clause",
+    ]
     description: str
     error: str
 
@@ -37,6 +57,12 @@ class AnalysisState(TypedDict, total=False):
     section_titles: list[str]
     provider: StructuredAnalysisProvider
     budget_chars: int
+    sections: list[SectionSpan]
+
+    # Only set when document_type == "contract"; the contract route's
+    # provider. Absent for generic/technical_specification so no contract
+    # provider call is even possible outside that route.
+    contract_provider: StructuredContractProvider
 
     # Set by ensure_classification (resolved by the service before invoking
     # the graph; this node only asserts presence — see its docstring).
@@ -57,6 +83,21 @@ class AnalysisState(TypedDict, total=False):
     valid_dates: list[ImportantDateCandidate]
     valid_risks: list[RiskCandidate]
 
+    # Contract route working/accumulated candidate pieces. Empty for
+    # generic/technical_specification documents.
+    contract_context: ClassificationContext
+    pending_parties: list[PartyCandidate]
+    pending_obligations: list[ObligationCandidate]
+    pending_payment_terms: list[PaymentTermCandidate]
+    pending_clauses: list[ClauseCandidate]
+
+    valid_parties: list[PartyCandidate]
+    valid_obligations: list[ObligationCandidate]
+    valid_payment_terms: list[PaymentTermCandidate]
+    valid_clauses: list[ClauseCandidate]
+
+    contract_metadata: ContractProviderMetadata | None
+
     invalid_items: list[InvalidItem]
     retry_count: int
 
@@ -65,3 +106,4 @@ class AnalysisState(TypedDict, total=False):
     status: AnalysisStatus
     failure_reason: str | None
     result: GenericAnalysisResult | None
+    contract_result: ContractAnalysisResult | None

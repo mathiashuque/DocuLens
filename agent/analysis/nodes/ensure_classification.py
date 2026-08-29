@@ -23,3 +23,16 @@ def ensure_classification(state: AnalysisState) -> dict[str, Any]:
             "failure_reason": "Classification is required before analysis.",
         }
     return {}
+
+
+def route_by_document_type(state: AnalysisState) -> str:
+    """Only a validated `contract` classification takes the contract route.
+
+    Routing depends solely on the persisted/validated `document_type`
+    already in state, never filename or content heuristics.
+    """
+    if state.get("status") == "failed":
+        return "fail"
+    if state.get("document_type") == "contract":
+        return "contract"
+    return "generic"

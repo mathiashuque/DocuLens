@@ -26,6 +26,13 @@ from agent.classification.provider import (
     ProviderMetadata as ClassificationProviderMetadata,
 )
 from agent.classification.types import ClassificationCandidate
+from agent.extractors.contract.provider import (
+    ProviderMetadata as ContractProviderMetadata,
+)
+from agent.extractors.contract.types import (
+    ContractExtractionCandidate,
+    PartyCandidate,
+)
 
 DOCUMENTS_ENDPOINT = "/api/documents"
 
@@ -126,6 +133,72 @@ def _patch_providers(monkeypatch: pytest.MonkeyPatch, page_text: str):
         "app.services.analysis._build_provider", lambda settings: analysis_provider
     )
     return classification_provider, analysis_provider
+
+
+class _FakeContractClassificationProvider:
+    def __init__(self, page_text: str) -> None:
+        self._page_text = page_text
+        self.calls = 0
+
+    async def classify(self, *, system_instruction: str, user_content: str):
+        self.calls += 1
+        candidate = ClassificationCandidate.model_validate(
+            {
+                "document_type": "contract",
+                "confidence": 0.95,
+                "reason": "Reads like a services agreement.",
+                "evidence": [{"page": 1, "text": self._page_text}],
+            }
+        )
+        return candidate, ClassificationProviderMetadata(
+            provider="openai", model="classify-test"
+        )
+
+
+class _FakeContractProvider:
+    def __init__(self, page_text: str) -> None:
+        self._page_text = page_text
+        self.extract_calls = 0
+        self.repair_calls = 0
+
+    async def extract(self, *, system_instruction: str, user_content: str):
+        self.extract_calls += 1
+        candidate = ContractExtractionCandidate(
+            parties=[
+                PartyCandidate(
+                    name="Northstar Hosting Ltd.",
+                    role="provider",
+                    source_page=1,
+                    evidence=self._page_text,
+                    confidence=0.9,
+                )
+            ]
+        )
+        return candidate, ContractProviderMetadata(
+            provider="openai", model="contract-test"
+        )
+
+    async def repair(self, *, system_instruction: str, user_content: str):
+        self.repair_calls += 1
+        raise AssertionError("repair should not be called on a valid candidate")
+
+
+def _patch_contract_providers(monkeypatch: pytest.MonkeyPatch, page_text: str):
+    classification_provider = _FakeContractClassificationProvider(page_text)
+    analysis_provider = _FakeAnalysisProvider(page_text)
+    contract_provider = _FakeContractProvider(page_text)
+    monkeypatch.setattr(
+        "app.services.classification._build_provider",
+        lambda settings: classification_provider,
+    )
+    monkeypatch.setattr(
+        "app.services.analysis._build_provider", lambda settings: analysis_provider
+    )
+    monkeypatch.setattr(
+        "app.services.analysis._build_contract_provider",
+        lambda settings: contract_provider,
+    )
+    return classification_provider, analysis_provider, contract_provider
 
 
 def test_post_returns_201_with_typed_shape(
@@ -241,6 +314,51 @@ def test_post_with_unconfigured_analysis_provider_returns_503(
     response = client.post(f"{DOCUMENTS_ENDPOINT}/{created['id']}/analysis")
 
     assert response.status_code == 503
+
+
+def test_contract_document_returns_specialized_analysis(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    page_text = "Northstar Hosting Ltd. (Provider) enters this Services Agreement."
+    created = _create_document(client, [page_text], "agreement.pdf")
+    classification_provider, analysis_provider, contract_provider = (
+        _patch_contract_providers(monkeypatch, page_text)
+    )
+
+    response = client.post(f"{DOCUMENTS_ENDPOINT}/{created['id']}/analysis")
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["document_type"] == "contract"
+    assert body["extractor"] == "contract_terms"
+    assert body["specialized_analysis"]["type"] == "contract"
+    assert (
+        body["specialized_analysis"]["parties"][0]["name"] == "Northstar Hosting Ltd."
+    )
+    assert body["specialized_analysis"]["obligations"] == []
+    assert classification_provider.calls == 1
+    assert analysis_provider.extract_calls == 1
+    assert contract_provider.extract_calls == 1
+
+
+def test_generic_document_has_no_specialized_analysis_and_no_contract_call(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    page_text = "This is a generic memo about quarterly planning."
+    created = _create_document(client, [page_text], "memo.pdf")
+    _patch_providers(monkeypatch, page_text)
+
+    def _fail(settings: object) -> object:
+        raise AssertionError("generic route must never build a contract provider")
+
+    monkeypatch.setattr("app.services.analysis._build_contract_provider", _fail)
+
+    response = client.post(f"{DOCUMENTS_ENDPOINT}/{created['id']}/analysis")
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["extractor"] == "generic"
+    assert body["specialized_analysis"] is None
 
 
 def test_malformed_uuid_returns_422(client: TestClient) -> None:
