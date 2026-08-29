@@ -9,8 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
-from app.models.document import Document, DocumentPage
+from app.models.document import Document, DocumentPage, DocumentSection
 from ingestion.models import DocumentPage as ParsedPage
+from ingestion.sections import SectionCandidate
 
 
 class DocumentRepository:
@@ -24,12 +25,18 @@ class DocumentRepository:
         content_hash: str,
         status: str,
         pages: list[ParsedPage],
+        sections: list[SectionCandidate] | None = None,
     ) -> Document:
-        """Insert a document and every parsed page as one flush.
+        """Insert a document, its parsed pages, and detected sections as one flush.
 
-        A constraint violation on any page raises and leaves nothing
-        committed; the caller's transaction boundary owns the rollback.
+        Section IDs are generated up front so parent relationships can be
+        mapped explicitly by candidate position rather than inferred from
+        row order. A constraint violation on any row raises and leaves
+        nothing committed; the caller's transaction boundary owns the
+        rollback.
         """
+        section_candidates = sections or []
+        section_ids = [uuid.uuid4() for _ in section_candidates]
         document = Document(
             id=uuid.uuid4(),
             filename=filename,
@@ -39,6 +46,24 @@ class DocumentRepository:
             pages=[
                 DocumentPage(page_number=page.page_number, text=page.text)
                 for page in pages
+            ],
+            sections=[
+                DocumentSection(
+                    id=section_ids[index],
+                    parent_section_id=(
+                        section_ids[candidate.parent_index]
+                        if candidate.parent_index is not None
+                        else None
+                    ),
+                    ordinal=index + 1,
+                    title=candidate.title,
+                    level=candidate.level,
+                    page_start=candidate.page_start,
+                    page_end=candidate.page_end,
+                    section_path=candidate.section_path,
+                    text=candidate.text,
+                )
+                for index, candidate in enumerate(section_candidates)
             ],
         )
         self._session.add(document)
@@ -50,7 +75,7 @@ class DocumentRepository:
         statement = (
             select(Document)
             .where(Document.id == document_id)
-            .options(selectinload(Document.pages))
+            .options(selectinload(Document.pages), selectinload(Document.sections))
         )
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()

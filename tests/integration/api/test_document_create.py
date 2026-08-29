@@ -62,6 +62,50 @@ def test_create_returns_201_with_typed_shape(client: TestClient) -> None:
     assert "First page text" in body["pages"][0]["text"]
     assert "id" in body
     assert "created_at" in body
+    assert body["sections"] == []
+
+
+def test_structured_pdf_persists_sections_with_correct_page_ranges(
+    client: TestClient,
+) -> None:
+    data = _build_pdf(["1 Introduction\nIntro body.", "still page one section"])
+
+    created = client.post(
+        ENDPOINT, files={"file": ("structured.pdf", data, "application/pdf")}
+    ).json()
+
+    assert len(created["sections"]) == 1
+    section = created["sections"][0]
+    assert section["title"] == "1 Introduction"
+    assert section["level"] == 1
+    assert section["parent_section_id"] is None
+    assert section["page_start"] == 1
+    assert section["page_end"] == 2
+    assert section["section_path"] == ["1 Introduction"]
+    assert "id" in section
+
+
+def test_unstructured_pdf_persists_with_empty_sections(client: TestClient) -> None:
+    data = _build_pdf(["Just some plain prose with no headings at all."])
+
+    created = client.post(
+        ENDPOINT, files={"file": ("unstructured.pdf", data, "application/pdf")}
+    ).json()
+
+    assert created["status"] == "parsed"
+    assert created["sections"] == []
+
+
+def test_get_returns_identical_ordered_sections(client: TestClient) -> None:
+    data = _build_pdf(["1 Introduction\nbody", "2 Next\nbody"])
+    created = client.post(
+        ENDPOINT, files={"file": ("structured.pdf", data, "application/pdf")}
+    ).json()
+
+    response = client.get(f"{ENDPOINT}/{created['id']}")
+
+    assert response.status_code == 200
+    assert response.json()["sections"] == created["sections"]
 
 
 def test_get_returns_identical_ordered_pages(client: TestClient) -> None:
@@ -109,8 +153,10 @@ def test_ocr_required_document_persists(client: TestClient) -> None:
     ).json()
 
     assert created["status"] == "ocr_required"
+    assert created["sections"] == []
     fetched = client.get(f"{ENDPOINT}/{created['id']}").json()
     assert fetched["status"] == "ocr_required"
+    assert fetched["sections"] == []
 
 
 @pytest.mark.asyncio

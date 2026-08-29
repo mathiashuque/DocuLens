@@ -13,7 +13,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
 )
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -45,6 +45,11 @@ class Document(Base):
         cascade="all, delete-orphan",
         order_by="DocumentPage.page_number",
     )
+    sections: Mapped[list["DocumentSection"]] = relationship(
+        back_populates="document",
+        cascade="all, delete-orphan",
+        order_by="DocumentSection.ordinal",
+    )
 
 
 class DocumentPage(Base):
@@ -68,3 +73,45 @@ class DocumentPage(Base):
     text: Mapped[str] = mapped_column(Text, nullable=False)
 
     document: Mapped["Document"] = relationship(back_populates="pages")
+
+
+class DocumentSection(Base):
+    __tablename__ = "document_sections"
+    __table_args__ = (
+        UniqueConstraint(
+            "document_id", "ordinal", name="uq_document_sections_document_ordinal"
+        ),
+        CheckConstraint("ordinal > 0", name="ck_document_sections_ordinal_positive"),
+        CheckConstraint("level > 0", name="ck_document_sections_level_positive"),
+        CheckConstraint(
+            "page_start > 0", name="ck_document_sections_page_start_positive"
+        ),
+        CheckConstraint(
+            "page_end >= page_start", name="ck_document_sections_page_end_gte_start"
+        ),
+        CheckConstraint(
+            "parent_section_id IS NULL OR parent_section_id != id",
+            name="ck_document_sections_not_self_parent",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    document_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("documents.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    parent_section_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_sections.id", ondelete="CASCADE"),
+        nullable=True,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    level: Mapped[int] = mapped_column(Integer, nullable=False)
+    page_start: Mapped[int] = mapped_column(Integer, nullable=False)
+    page_end: Mapped[int] = mapped_column(Integer, nullable=False)
+    section_path: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+
+    document: Mapped["Document"] = relationship(back_populates="sections")
