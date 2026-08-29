@@ -14,6 +14,7 @@ from app.core.config import UploadSettings
 from app.db.repository import DocumentRepository
 from app.models.document import Document
 from app.services.document_parsing import read_and_parse_pdf
+from ingestion.sections import detect_sections
 
 
 class DocumentNotFoundError(Exception):
@@ -25,12 +26,14 @@ async def create_document(
 ) -> Document:
     filename, data, parsed = await read_and_parse_pdf(upload, settings)
     content_hash = hashlib.sha256(data).hexdigest()
+    sections = detect_sections(parsed.pages)
     repository = DocumentRepository(session)
     return await repository.create(
         filename=filename,
         content_hash=content_hash,
         status=parsed.status,
         pages=parsed.pages,
+        sections=sections,
     )
 
 

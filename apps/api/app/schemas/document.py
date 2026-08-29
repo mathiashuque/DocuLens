@@ -23,6 +23,19 @@ class ParseDocumentResponse(BaseModel):
     pages: list[DocumentPageResponse]
 
 
+class DocumentSectionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    title: str
+    level: int
+    parent_section_id: uuid.UUID | None
+    page_start: int
+    page_end: int
+    section_path: list[str]
+    text: str
+
+
 class DocumentResponse(BaseModel):
     """Durable representation returned by create and retrieve."""
 
@@ -35,3 +48,4 @@ class DocumentResponse(BaseModel):
     page_count: int
     created_at: datetime
     pages: list[DocumentPageResponse]
+    sections: list[DocumentSectionResponse]
