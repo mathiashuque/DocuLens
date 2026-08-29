@@ -1,0 +1,55 @@
+# Git and VCS metadata
+.git/
+.gitignore
+
+# Local AI harness / editor / OS files
+.ai/
+.claude/
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Docs and prompts (not needed by the runtime image)
+docs/
+doculens_idea.md
+README.md
+LICENSE
+
+# Not imported by the API image
+apps/web/
+agent/
+retrieval/
+evals/
+scripts/
+tests/
+
+# Environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Local/runtime data, uploads, and logs
+uploads/
+data/
+storage/
+*.log
+*.db
+*.sqlite
+*.sqlite3
+
+# Python caches and virtual environments
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# JavaScript/Node artifacts (no frontend manifest yet, kept for safety)
+node_modules/
+.next/
