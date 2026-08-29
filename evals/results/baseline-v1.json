@@ -1,0 +1,157 @@
+{
+  "command": "python -m evals.run_baselines --output evals/results/baseline-v1.json",
+  "complete": true,
+  "mode": "deterministic_no_network_or_provider_calls",
+  "schema_version": "baseline-v1",
+  "suites": [
+    {
+      "dataset": {
+        "case_count": 8,
+        "document_types": [],
+        "path": "evals/datasets/classification_v1.json",
+        "version": "classification_v1"
+      },
+      "evaluator_version": "existing-unit-evaluator-v1",
+      "failures": [],
+      "limitations": [
+        "The checked-in fixture has labels/validation scenarios but no independent stored predictions; existing metrics test evaluator correctness and are not publishable pipeline-quality measurements."
+      ],
+      "metrics": null,
+      "name": "classification",
+      "prediction_source": "none",
+      "task": "classification"
+    },
+    {
+      "dataset": {
+        "case_count": 8,
+        "document_types": [
+          "contract",
+          "generic",
+          "technical_specification"
+        ],
+        "path": "evals/datasets/analysis_v1.json",
+        "version": "analysis_v1"
+      },
+      "evaluator_version": "existing-unit-evaluator-v1",
+      "failures": [],
+      "limitations": [
+        "The checked-in fixture has labels/validation scenarios but no independent stored predictions; existing metrics test evaluator correctness and are not publishable pipeline-quality measurements."
+      ],
+      "metrics": null,
+      "name": "generic_extraction",
+      "prediction_source": "none",
+      "task": "generic_extraction"
+    },
+    {
+      "dataset": {
+        "case_count": 14,
+        "document_types": [
+          "contract",
+          "generic",
+          "technical_specification"
+        ],
+        "path": "evals/datasets/contract_v1.json",
+        "version": "contract_v1"
+      },
+      "evaluator_version": "existing-unit-evaluator-v1",
+      "failures": [],
+      "limitations": [
+        "The checked-in fixture has labels/validation scenarios but no independent stored predictions; existing metrics test evaluator correctness and are not publishable pipeline-quality measurements."
+      ],
+      "metrics": null,
+      "name": "contract_extraction",
+      "prediction_source": "none",
+      "task": "contract_extraction"
+    },
+    {
+      "dataset": {
+        "case_count": 20,
+        "document_types": [
+          "contract",
+          "generic",
+          "technical_specification"
+        ],
+        "path": "evals/datasets/technical_spec_v1.json",
+        "version": "technical_spec_v1"
+      },
+      "evaluator_version": "existing-unit-evaluator-v1",
+      "failures": [],
+      "limitations": [
+        "The checked-in fixture has labels/validation scenarios but no independent stored predictions; existing metrics test evaluator correctness and are not publishable pipeline-quality measurements."
+      ],
+      "metrics": null,
+      "name": "technical_specification_extraction",
+      "prediction_source": "none",
+      "task": "technical_specification_extraction"
+    },
+    {
+      "dataset": {
+        "case_count": 10,
+        "document_types": [
+          "contract",
+          "generic",
+          "technical_specification"
+        ],
+        "path": "evals/datasets/retrieval_v1.json",
+        "version": "retrieval_v1"
+      },
+      "evaluator_version": "v1",
+      "failures": [],
+      "limitations": [
+        "Latency is deliberately omitted: in-process timing is not production latency."
+      ],
+      "metrics": {
+        "embedding_calls": {
+          "documents": 4,
+          "queries": 10
+        },
+        "failure_count": 0,
+        "mrr": 0.7962962962962963,
+        "no_relevant_query_count": 1,
+        "provenance": {
+          "cross_document_leakage": 0,
+          "invalid": 0,
+          "valid": 10
+        },
+        "recall_at": {
+          "1": 0.6666666666666666,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "scored_query_count": 9
+      },
+      "name": "retrieval",
+      "prediction_source": "deterministic_fake_embedding",
+      "task": "retrieval"
+    },
+    {
+      "dataset": {
+        "case_count": 7,
+        "document_types": [],
+        "path": "evals/datasets/grounded_qa_v1.json",
+        "version": "grounded_qa_v1"
+      },
+      "evaluator_version": "recorded-grounded-qa-v1",
+      "failures": [],
+      "limitations": [
+        "Recorded answers exercise workflow and citation enforcement, not live-model correctness or faithfulness."
+      ],
+      "metrics": {
+        "citation_validation_failure_count": 2,
+        "citation_validity_rate": 0.6666666666666666,
+        "grounded_success_rate": 0.5714285714285714,
+        "insufficient_recall": 1.0,
+        "retrieval_mrr": 0.7962962962962963,
+        "retrieval_recall_at": {
+          "1": 0.6666666666666666,
+          "3": 1.0,
+          "5": 1.0
+        },
+        "unsupported_or_invalid_citation_rate": 0.3333333333333333
+      },
+      "name": "grounded_qa",
+      "prediction_source": "recorded_provider_output",
+      "task": "grounded_qa"
+    }
+  ]
+}

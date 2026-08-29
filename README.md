@@ -3,8 +3,9 @@
 DocuLens is an agentic document-intelligence platform for producing structured,
 traceable analysis and evidence-grounded answers from complex documents.
 
-The repository is currently an architecture-only bootstrap. Product behavior
-and local-development instructions will be added as implementation begins.
+The repository includes the implemented MVP path for document analysis and grounded
+Q&A. Its deterministic evaluation harness and measured baseline limitations are in
+[`docs/evaluation.md`](docs/evaluation.md).
 
 ## Repository layout
 
