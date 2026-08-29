@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
+import { AskDocuLens } from "@/components/questions/AskDocuLens";
 import { DocumentSummary } from "@/components/DocumentSummary";
 import { PageList } from "@/components/PageList";
 import { SectionList } from "@/components/SectionList";
@@ -45,6 +46,11 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
         documentStatus={document.status}
         documentPageNumbers={document.pages.map((page) => page.page_number)}
         initialLoad={analysisLoad}
+      />
+      <AskDocuLens
+        documentId={document.id}
+        documentStatus={document.status}
+        documentPageNumbers={document.pages.map((page) => page.page_number)}
       />
       <SectionList sections={document.sections} />
       <PageList pages={document.pages} />
