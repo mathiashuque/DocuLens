@@ -96,3 +96,35 @@ Notes:
 - The database port is not published to the host by default.
 - `POST /api/documents/parse` remains a stateless, database-free parse — it
   works even when PostgreSQL is unavailable.
+
+## Local development (frontend)
+
+Prerequisites: the API running locally (see above), and Node.js 24+.
+
+1. Copy the example environment file:
+
+   ```sh
+   cp apps/web/.env.example apps/web/.env.local
+   ```
+
+2. Install dependencies and start the dev server:
+
+   ```sh
+   cd apps/web
+   npm install
+   npm run dev
+   ```
+
+3. Open `http://localhost:3000`, upload a PDF, and you'll be taken to its
+   document page. The frontend calls the API through a same-origin Next.js
+   route handler, so no backend CORS configuration is needed.
+
+Frontend checks:
+
+```sh
+cd apps/web
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
