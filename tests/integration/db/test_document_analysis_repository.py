@@ -24,6 +24,12 @@ from agent.extractors.contract.result import (
     PartyResult,
     PaymentTermResult,
 )
+from agent.extractors.technical_spec.result import (
+    ConstraintResult,
+    DependencyResult,
+    RequirementResult,
+    TechnicalSpecAnalysisResult,
+)
 from ingestion.models import DocumentPage
 
 
@@ -228,6 +234,104 @@ async def test_non_contract_result_persists_no_contract_children(
     assert fetched.contract_obligations == []
     assert fetched.contract_payment_terms == []
     assert fetched.contract_clauses == []
+
+
+def _technical_spec_result() -> TechnicalSpecAnalysisResult:
+    return TechnicalSpecAnalysisResult(
+        requirements=(
+            RequirementResult(
+                id=uuid.uuid4(),
+                category="functional",
+                identifier="FR-12",
+                statement="Revoke active sessions",
+                priority="must",
+                actor="administrator",
+                measurable_criterion=None,
+                source_page=8,
+                evidence="FR-12: The service shall allow administrators to revoke active sessions.",
+                confidence=0.98,
+            ),
+        ),
+        constraints=(
+            ConstraintResult(
+                id=uuid.uuid4(),
+                category="performance",
+                statement="Response time limit",
+                value_text="under 200ms p95",
+                source_page=3,
+                evidence="Response time shall not exceed 200ms p95",
+                confidence=0.8,
+            ),
+        ),
+        dependencies=(
+            DependencyResult(
+                id=uuid.uuid4(),
+                name="Payment Gateway API",
+                dependency_type="external service",
+                description="Integrates with the external payment gateway",
+                source_page=5,
+                evidence="The system depends on the Payment Gateway API for billing",
+                confidence=0.7,
+            ),
+        ),
+        provider="openai",
+        model="gpt-4o-mini",
+        latency_ms=350,
+        input_tokens=1000,
+        output_tokens=250,
+    )
+
+
+@pytest.mark.asyncio
+async def test_technical_spec_result_round_trips_specialized_provenance(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    created = await repository.create(
+        document_id=document_id,
+        document_type="technical_specification",
+        extractor="technical_specification_requirements",
+        result=_result(specialized=_technical_spec_result()),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.id == created.id
+    assert fetched.extractor == "technical_specification_requirements"
+    assert len(fetched.technical_requirements) == 1
+    assert fetched.technical_requirements[0].identifier == "FR-12"
+    assert fetched.technical_requirements[0].category == "functional"
+    assert len(fetched.technical_constraints) == 1
+    assert fetched.technical_constraints[0].value_text == "under 200ms p95"
+    assert len(fetched.technical_dependencies) == 1
+    assert fetched.technical_dependencies[0].name == "Payment Gateway API"
+
+
+@pytest.mark.asyncio
+async def test_non_technical_spec_result_persists_no_technical_spec_children(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.technical_requirements == []
+    assert fetched.technical_constraints == []
+    assert fetched.technical_dependencies == []
 
 
 @pytest.mark.asyncio

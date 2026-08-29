@@ -116,17 +116,16 @@ async def test_contract_route_calls_contract_provider_and_produces_specialized_r
     assert specialized.parties[0].name == "Northstar Hosting Ltd."
 
 
-@pytest.mark.parametrize("document_type", ["generic", "technical_specification"])
 @pytest.mark.asyncio
-async def test_non_contract_routes_never_call_contract_provider(
-    document_type: str,
-) -> None:
+async def test_generic_route_never_calls_contract_provider() -> None:
     generic_provider = _FakeGenericProvider(
         [GenericAnalysisCandidate(summary=_summary())]
     )
-    state = _base_state(document_type, generic_provider)
+    state = _base_state("generic", generic_provider)
     # No contract_provider in state at all: if the graph tried to call it,
-    # this would raise a KeyError, proving the route is never taken.
+    # this would raise a KeyError, proving the route is never taken. See
+    # test_technical_spec_graph.py for the technical_specification route,
+    # which now takes its own specialized path (never the contract one).
 
     result = await run_analysis_graph(state)
 

@@ -26,13 +26,17 @@ def ensure_classification(state: AnalysisState) -> dict[str, Any]:
 
 
 def route_by_document_type(state: AnalysisState) -> str:
-    """Only a validated `contract` classification takes the contract route.
+    """Only a validated `contract` or `technical_specification`
+    classification takes its specialized route.
 
     Routing depends solely on the persisted/validated `document_type`
     already in state, never filename or content heuristics.
     """
     if state.get("status") == "failed":
         return "fail"
-    if state.get("document_type") == "contract":
+    document_type = state.get("document_type")
+    if document_type == "contract":
         return "contract"
+    if document_type == "technical_specification":
+        return "technical_specification"
     return "generic"

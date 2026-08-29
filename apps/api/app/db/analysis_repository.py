@@ -13,6 +13,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from agent.analysis.result import GenericAnalysisResult
+from agent.extractors.contract.result import ContractAnalysisResult
+from agent.extractors.technical_spec.result import TechnicalSpecAnalysisResult
 from app.models.document import (
     AnalysisFinding,
     AnalysisImportantDate,
@@ -23,6 +25,9 @@ from app.models.document import (
     ContractParty,
     ContractPaymentTerm,
     DocumentAnalysis,
+    TechnicalConstraint,
+    TechnicalDependency,
+    TechnicalRequirement,
 )
 
 
@@ -46,6 +51,9 @@ class AnalysisRepository:
                 selectinload(DocumentAnalysis.contract_obligations),
                 selectinload(DocumentAnalysis.contract_payment_terms),
                 selectinload(DocumentAnalysis.contract_clauses),
+                selectinload(DocumentAnalysis.technical_requirements),
+                selectinload(DocumentAnalysis.technical_constraints),
+                selectinload(DocumentAnalysis.technical_dependencies),
             )
         )
         result = await self._session.execute(statement)
@@ -59,6 +67,16 @@ class AnalysisRepository:
         extractor: str,
         result: GenericAnalysisResult,
     ) -> DocumentAnalysis:
+        contract_specialized = (
+            result.specialized
+            if isinstance(result.specialized, ContractAnalysisResult)
+            else None
+        )
+        technical_spec_specialized = (
+            result.specialized
+            if isinstance(result.specialized, TechnicalSpecAnalysisResult)
+            else None
+        )
         analysis = DocumentAnalysis(
             id=uuid.uuid4(),
             document_id=document_id,
@@ -134,7 +152,7 @@ class AnalysisRepository:
                     confidence=party.confidence,
                 )
                 for index, party in enumerate(
-                    result.specialized.parties if result.specialized else []
+                    contract_specialized.parties if contract_specialized else []
                 )
             ],
             contract_obligations=[
@@ -150,7 +168,7 @@ class AnalysisRepository:
                     confidence=obligation.confidence,
                 )
                 for index, obligation in enumerate(
-                    result.specialized.obligations if result.specialized else []
+                    contract_specialized.obligations if contract_specialized else []
                 )
             ],
             contract_payment_terms=[
@@ -166,7 +184,7 @@ class AnalysisRepository:
                     confidence=term.confidence,
                 )
                 for index, term in enumerate(
-                    result.specialized.payment_terms if result.specialized else []
+                    contract_specialized.payment_terms if contract_specialized else []
                 )
             ],
             contract_clauses=[
@@ -183,7 +201,61 @@ class AnalysisRepository:
                     confidence=clause.confidence,
                 )
                 for index, clause in enumerate(
-                    result.specialized.clauses if result.specialized else []
+                    contract_specialized.clauses if contract_specialized else []
+                )
+            ],
+            technical_requirements=[
+                TechnicalRequirement(
+                    id=requirement.id,
+                    ordinal=index + 1,
+                    category=requirement.category,
+                    identifier=requirement.identifier,
+                    statement=requirement.statement,
+                    priority=requirement.priority,
+                    actor=requirement.actor,
+                    measurable_criterion=requirement.measurable_criterion,
+                    source_page=requirement.source_page,
+                    evidence=requirement.evidence,
+                    confidence=requirement.confidence,
+                )
+                for index, requirement in enumerate(
+                    technical_spec_specialized.requirements
+                    if technical_spec_specialized
+                    else []
+                )
+            ],
+            technical_constraints=[
+                TechnicalConstraint(
+                    id=constraint.id,
+                    ordinal=index + 1,
+                    category=constraint.category,
+                    statement=constraint.statement,
+                    value_text=constraint.value_text,
+                    source_page=constraint.source_page,
+                    evidence=constraint.evidence,
+                    confidence=constraint.confidence,
+                )
+                for index, constraint in enumerate(
+                    technical_spec_specialized.constraints
+                    if technical_spec_specialized
+                    else []
+                )
+            ],
+            technical_dependencies=[
+                TechnicalDependency(
+                    id=dependency.id,
+                    ordinal=index + 1,
+                    name=dependency.name,
+                    dependency_type=dependency.dependency_type,
+                    description=dependency.description,
+                    source_page=dependency.source_page,
+                    evidence=dependency.evidence,
+                    confidence=dependency.confidence,
+                )
+                for index, dependency in enumerate(
+                    technical_spec_specialized.dependencies
+                    if technical_spec_specialized
+                    else []
                 )
             ],
         )

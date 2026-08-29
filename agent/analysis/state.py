@@ -31,6 +31,16 @@ from agent.extractors.contract.types import (
     PartyCandidate,
     PaymentTermCandidate,
 )
+from agent.extractors.technical_spec.provider import (
+    ProviderMetadata as TechnicalSpecProviderMetadata,
+)
+from agent.extractors.technical_spec.provider import StructuredTechnicalSpecProvider
+from agent.extractors.technical_spec.result import TechnicalSpecAnalysisResult
+from agent.extractors.technical_spec.types import (
+    ConstraintCandidate,
+    DependencyCandidate,
+    RequirementCandidate,
+)
 
 AnalysisStatus = Literal["pending", "completed", "failed"]
 
@@ -44,6 +54,9 @@ class InvalidItem(TypedDict):
         "obligation",
         "payment_term",
         "clause",
+        "requirement",
+        "constraint",
+        "dependency",
     ]
     description: str
     error: str
@@ -63,6 +76,10 @@ class AnalysisState(TypedDict, total=False):
     # provider. Absent for generic/technical_specification so no contract
     # provider call is even possible outside that route.
     contract_provider: StructuredContractProvider
+
+    # Only set when document_type == "technical_specification"; mirrors
+    # contract_provider's exclusivity.
+    technical_spec_provider: StructuredTechnicalSpecProvider
 
     # Set by ensure_classification (resolved by the service before invoking
     # the graph; this node only asserts presence — see its docstring).
@@ -98,6 +115,19 @@ class AnalysisState(TypedDict, total=False):
 
     contract_metadata: ContractProviderMetadata | None
 
+    # Technical-specification route working/accumulated candidate pieces.
+    # Empty for generic/contract documents.
+    technical_spec_context: ClassificationContext
+    pending_requirements: list[RequirementCandidate]
+    pending_constraints: list[ConstraintCandidate]
+    pending_dependencies: list[DependencyCandidate]
+
+    valid_requirements: list[RequirementCandidate]
+    valid_constraints: list[ConstraintCandidate]
+    valid_dependencies: list[DependencyCandidate]
+
+    technical_spec_metadata: TechnicalSpecProviderMetadata | None
+
     invalid_items: list[InvalidItem]
     retry_count: int
 
@@ -107,3 +137,4 @@ class AnalysisState(TypedDict, total=False):
     failure_reason: str | None
     result: GenericAnalysisResult | None
     contract_result: ContractAnalysisResult | None
+    technical_spec_result: TechnicalSpecAnalysisResult | None

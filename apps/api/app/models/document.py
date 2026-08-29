@@ -20,6 +20,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from agent.analysis.taxonomy import ALLOWED_IMPORTANCE, ALLOWED_SEVERITY
 from agent.classification.taxonomy import ALLOWED_DOCUMENT_TYPES
 from agent.extractors.contract.taxonomy import ALLOWED_CLAUSE_CATEGORIES
+from agent.extractors.technical_spec.taxonomy import (
+    ALLOWED_CONSTRAINT_CATEGORIES,
+    ALLOWED_PRIORITIES,
+    ALLOWED_REQUIREMENT_CATEGORIES,
+)
 from app.models.base import Base
 
 
@@ -271,6 +276,21 @@ class DocumentAnalysis(Base):
         back_populates="analysis",
         cascade="all, delete-orphan",
         order_by="ContractClause.ordinal",
+    )
+    technical_requirements: Mapped[list["TechnicalRequirement"]] = relationship(
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="TechnicalRequirement.ordinal",
+    )
+    technical_constraints: Mapped[list["TechnicalConstraint"]] = relationship(
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="TechnicalConstraint.ordinal",
+    )
+    technical_dependencies: Mapped[list["TechnicalDependency"]] = relationship(
+        back_populates="analysis",
+        cascade="all, delete-orphan",
+        order_by="TechnicalDependency.ordinal",
     )
 
 
@@ -591,4 +611,163 @@ class ContractClause(Base):
 
     analysis: Mapped["DocumentAnalysis"] = relationship(
         back_populates="contract_clauses"
+    )
+
+
+class TechnicalRequirement(Base):
+    __tablename__ = "technical_requirements"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "ordinal", name="uq_technical_requirements_analysis_ordinal"
+        ),
+        CheckConstraint(
+            "ordinal > 0", name="ck_technical_requirements_ordinal_positive"
+        ),
+        CheckConstraint(
+            "source_page > 0", name="ck_technical_requirements_source_page_positive"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_technical_requirements_confidence_range",
+        ),
+        CheckConstraint(
+            "category IN ("
+            + ", ".join(f"'{value}'" for value in ALLOWED_REQUIREMENT_CATEGORIES)
+            + ")",
+            name="ck_technical_requirements_category_valid",
+        ),
+        CheckConstraint(
+            "priority IN ("
+            + ", ".join(f"'{value}'" for value in ALLOWED_PRIORITIES)
+            + ")",
+            name="ck_technical_requirements_priority_valid",
+        ),
+        CheckConstraint(
+            "char_length(statement) > 0",
+            name="ck_technical_requirements_statement_nonempty",
+        ),
+        CheckConstraint(
+            "char_length(evidence) > 0",
+            name="ck_technical_requirements_evidence_nonempty",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[str] = mapped_column(String(20), nullable=False)
+    identifier: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    priority: Mapped[str] = mapped_column(String(20), nullable=False)
+    actor: Mapped[str | None] = mapped_column(Text, nullable=True)
+    measurable_criterion: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_page: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    analysis: Mapped["DocumentAnalysis"] = relationship(
+        back_populates="technical_requirements"
+    )
+
+
+class TechnicalConstraint(Base):
+    __tablename__ = "technical_constraints"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "ordinal", name="uq_technical_constraints_analysis_ordinal"
+        ),
+        CheckConstraint(
+            "ordinal > 0", name="ck_technical_constraints_ordinal_positive"
+        ),
+        CheckConstraint(
+            "source_page > 0", name="ck_technical_constraints_source_page_positive"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_technical_constraints_confidence_range",
+        ),
+        CheckConstraint(
+            "category IN ("
+            + ", ".join(f"'{value}'" for value in ALLOWED_CONSTRAINT_CATEGORIES)
+            + ")",
+            name="ck_technical_constraints_category_valid",
+        ),
+        CheckConstraint(
+            "char_length(statement) > 0",
+            name="ck_technical_constraints_statement_nonempty",
+        ),
+        CheckConstraint(
+            "char_length(evidence) > 0",
+            name="ck_technical_constraints_evidence_nonempty",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[str] = mapped_column(String(20), nullable=False)
+    statement: Mapped[str] = mapped_column(Text, nullable=False)
+    value_text: Mapped[str | None] = mapped_column(Text, nullable=True)
+    source_page: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    analysis: Mapped["DocumentAnalysis"] = relationship(
+        back_populates="technical_constraints"
+    )
+
+
+class TechnicalDependency(Base):
+    __tablename__ = "technical_dependencies"
+    __table_args__ = (
+        UniqueConstraint(
+            "analysis_id", "ordinal", name="uq_technical_dependencies_analysis_ordinal"
+        ),
+        CheckConstraint(
+            "ordinal > 0", name="ck_technical_dependencies_ordinal_positive"
+        ),
+        CheckConstraint(
+            "source_page > 0", name="ck_technical_dependencies_source_page_positive"
+        ),
+        CheckConstraint(
+            "confidence >= 0 AND confidence <= 1",
+            name="ck_technical_dependencies_confidence_range",
+        ),
+        CheckConstraint(
+            "char_length(name) > 0", name="ck_technical_dependencies_name_nonempty"
+        ),
+        CheckConstraint(
+            "char_length(description) > 0",
+            name="ck_technical_dependencies_description_nonempty",
+        ),
+        CheckConstraint(
+            "char_length(evidence) > 0",
+            name="ck_technical_dependencies_evidence_nonempty",
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True)
+    analysis_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("document_analyses.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    ordinal: Mapped[int] = mapped_column(Integer, nullable=False)
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    dependency_type: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    source_page: Mapped[int] = mapped_column(Integer, nullable=False)
+    evidence: Mapped[str] = mapped_column(Text, nullable=False)
+    confidence: Mapped[float] = mapped_column(Float, nullable=False)
+
+    analysis: Mapped["DocumentAnalysis"] = relationship(
+        back_populates="technical_dependencies"
     )

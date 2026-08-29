@@ -3,12 +3,13 @@ nodes, and conditional edges for validation/retry — not a sequential wrapper.
 
 ```text
 load_document -> ensure_classification -> route_by_document_type
-    --contract--> extract_contract_terms --+
-    --generic/technical_specification------+
-                                            v
-                                build_extraction_context
-                                            |
-                                            v
+    --contract----------------> extract_contract_terms ------------+
+    --technical_specification-> extract_technical_spec_requirements+
+    --generic------------------------------------------------------+
+                                                                     v
+                                                    build_extraction_context
+                                                                     |
+                                                                     v
                                 extract_generic_analysis -> validate_analysis
         --valid--------------------------> finalize_completed_analysis -> END
         --invalid, retry_count == 0------> retry_invalid_subset -> validate_analysis
@@ -17,11 +18,15 @@ load_document -> ensure_classification -> route_by_document_type
 
 `load_document`/`ensure_classification` can themselves fail (no usable text,
 no classification); either short-circuits straight to `fail_safely`. Only a
-validated `contract` classification reaches `extract_contract_terms`, the
-graph's only node that can call the contract provider; common generic
-analysis still runs afterward for contracts, and `validate_analysis`/
+validated `contract` classification reaches `extract_contract_terms`, and
+only a validated `technical_specification` classification reaches
+`extract_technical_spec_requirements` — the graph's only nodes that can call
+their respective specialized providers, and mutually exclusive since a
+document has exactly one validated classification. Common generic analysis
+still runs afterward for both, and `validate_analysis`/
 `retry_invalid_subset` validate and (within the same bounded retry) repair
-both the generic and contract candidate sets together.
+the generic candidate set together with whichever specialized candidate set
+(contract or technical-spec) is present.
 """
 
 from langgraph.graph import END, StateGraph
@@ -33,6 +38,9 @@ from agent.analysis.nodes.ensure_classification import (
 )
 from agent.analysis.nodes.extract_contract_terms import extract_contract_terms
 from agent.analysis.nodes.extract_generic_analysis import extract_generic_analysis
+from agent.analysis.nodes.extract_technical_spec_requirements import (
+    extract_technical_spec_requirements,
+)
 from agent.analysis.nodes.fail_safely import fail_safely
 from agent.analysis.nodes.finalize_completed_analysis import finalize_completed_analysis
 from agent.analysis.nodes.load_document import load_document
@@ -51,6 +59,9 @@ def build_analysis_graph():  # type: ignore[no-untyped-def]
     graph.add_node("load_document", load_document)
     graph.add_node("ensure_classification", ensure_classification)
     graph.add_node("extract_contract_terms", extract_contract_terms)
+    graph.add_node(
+        "extract_technical_spec_requirements", extract_technical_spec_requirements
+    )
     graph.add_node("build_extraction_context", build_extraction_context)
     graph.add_node("extract_generic_analysis", extract_generic_analysis)
     graph.add_node("validate_analysis", validate_analysis)
@@ -70,11 +81,13 @@ def build_analysis_graph():  # type: ignore[no-untyped-def]
         route_by_document_type,
         {
             "contract": "extract_contract_terms",
+            "technical_specification": "extract_technical_spec_requirements",
             "generic": "build_extraction_context",
             "fail": "fail_safely",
         },
     )
     graph.add_edge("extract_contract_terms", "build_extraction_context")
+    graph.add_edge("extract_technical_spec_requirements", "build_extraction_context")
     graph.add_edge("build_extraction_context", "extract_generic_analysis")
     graph.add_edge("extract_generic_analysis", "validate_analysis")
 

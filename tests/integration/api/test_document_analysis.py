@@ -33,6 +33,13 @@ from agent.extractors.contract.types import (
     ContractExtractionCandidate,
     PartyCandidate,
 )
+from agent.extractors.technical_spec.provider import (
+    ProviderMetadata as TechnicalSpecProviderMetadata,
+)
+from agent.extractors.technical_spec.types import (
+    RequirementCandidate,
+    TechnicalSpecExtractionCandidate,
+)
 
 DOCUMENTS_ENDPOINT = "/api/documents"
 
@@ -201,6 +208,74 @@ def _patch_contract_providers(monkeypatch: pytest.MonkeyPatch, page_text: str):
     return classification_provider, analysis_provider, contract_provider
 
 
+class _FakeTechnicalSpecClassificationProvider:
+    def __init__(self, page_text: str) -> None:
+        self._page_text = page_text
+        self.calls = 0
+
+    async def classify(self, *, system_instruction: str, user_content: str):
+        self.calls += 1
+        candidate = ClassificationCandidate.model_validate(
+            {
+                "document_type": "technical_specification",
+                "confidence": 0.95,
+                "reason": "Reads like a technical specification.",
+                "evidence": [{"page": 1, "text": self._page_text}],
+            }
+        )
+        return candidate, ClassificationProviderMetadata(
+            provider="openai", model="classify-test"
+        )
+
+
+class _FakeTechnicalSpecProvider:
+    def __init__(self, page_text: str) -> None:
+        self._page_text = page_text
+        self.extract_calls = 0
+        self.repair_calls = 0
+
+    async def extract(self, *, system_instruction: str, user_content: str):
+        self.extract_calls += 1
+        candidate = TechnicalSpecExtractionCandidate(
+            requirements=[
+                RequirementCandidate(
+                    category="functional",
+                    identifier="FR-12",
+                    statement="Revoke active sessions",
+                    priority="must",
+                    source_page=1,
+                    evidence=self._page_text,
+                    confidence=0.9,
+                )
+            ]
+        )
+        return candidate, TechnicalSpecProviderMetadata(
+            provider="openai", model="technical-spec-test"
+        )
+
+    async def repair(self, *, system_instruction: str, user_content: str):
+        self.repair_calls += 1
+        raise AssertionError("repair should not be called on a valid candidate")
+
+
+def _patch_technical_spec_providers(monkeypatch: pytest.MonkeyPatch, page_text: str):
+    classification_provider = _FakeTechnicalSpecClassificationProvider(page_text)
+    analysis_provider = _FakeAnalysisProvider(page_text)
+    technical_spec_provider = _FakeTechnicalSpecProvider(page_text)
+    monkeypatch.setattr(
+        "app.services.classification._build_provider",
+        lambda settings: classification_provider,
+    )
+    monkeypatch.setattr(
+        "app.services.analysis._build_provider", lambda settings: analysis_provider
+    )
+    monkeypatch.setattr(
+        "app.services.analysis._build_technical_spec_provider",
+        lambda settings: technical_spec_provider,
+    )
+    return classification_provider, analysis_provider, technical_spec_provider
+
+
 def test_post_returns_201_with_typed_shape(
     client: TestClient, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -352,6 +427,54 @@ def test_generic_document_has_no_specialized_analysis_and_no_contract_call(
         raise AssertionError("generic route must never build a contract provider")
 
     monkeypatch.setattr("app.services.analysis._build_contract_provider", _fail)
+
+    response = client.post(f"{DOCUMENTS_ENDPOINT}/{created['id']}/analysis")
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["extractor"] == "generic"
+    assert body["specialized_analysis"] is None
+
+
+def test_technical_spec_document_returns_specialized_analysis(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    page_text = (
+        "FR-12: The service shall allow administrators to revoke active sessions."
+    )
+    created = _create_document(client, [page_text], "spec.pdf")
+    classification_provider, analysis_provider, technical_spec_provider = (
+        _patch_technical_spec_providers(monkeypatch, page_text)
+    )
+
+    response = client.post(f"{DOCUMENTS_ENDPOINT}/{created['id']}/analysis")
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["document_type"] == "technical_specification"
+    assert body["extractor"] == "technical_specification_requirements"
+    assert body["specialized_analysis"]["type"] == "technical_specification"
+    assert (
+        body["specialized_analysis"]["functional_requirements"][0]["identifier"]
+        == "FR-12"
+    )
+    assert body["specialized_analysis"]["security_requirements"] == []
+    assert classification_provider.calls == 1
+    assert analysis_provider.extract_calls == 1
+    assert technical_spec_provider.extract_calls == 1
+
+
+def test_generic_document_has_no_specialized_analysis_and_no_technical_spec_call(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    page_text = "This is a generic memo about quarterly planning."
+    created = _create_document(client, [page_text], "memo.pdf")
+    _patch_providers(monkeypatch, page_text)
+
+    def _fail(settings: object) -> object:
+        raise AssertionError("generic route must never build a technical spec provider")
+
+    monkeypatch.setattr("app.services.analysis._build_technical_spec_provider", _fail)
 
     response = client.post(f"{DOCUMENTS_ENDPOINT}/{created['id']}/analysis")
 
