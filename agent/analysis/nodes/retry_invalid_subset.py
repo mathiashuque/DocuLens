@@ -6,12 +6,15 @@ already accumulated in state are never re-requested. A provider failure
 during repair fails the run safely rather than looping further.
 
 Invalid items are split by kind: generic (finding/date/risk) items are
-repaired via the generic provider using the generic context, and contract
+repaired via the generic provider using the generic context; contract
 (party/obligation/payment_term/clause) items are repaired via the contract
-provider using the contract context — each called only when that kind
-actually has invalid items, so a contract-only failure never triggers a
-generic provider call and vice versa. Both repairs still count as a single
-retry against the graph's shared, strict retry budget.
+provider using the contract context; technical-specification (requirement/
+constraint/dependency) items are repaired via the technical-spec provider
+using the technical-spec context. Each provider is called only when that
+kind actually has invalid items — at most one of the two specialized
+providers ever has invalid items in a single run, since a document takes
+exactly one specialized route. All repairs still count as a single retry
+against the graph's shared, strict retry budget.
 """
 
 from typing import Any
@@ -26,8 +29,17 @@ from agent.extractors.contract.prompt import (
 from agent.extractors.contract.prompt import (
     render_repair_content as render_contract_repair_content,
 )
+from agent.extractors.technical_spec.prompt import (
+    REPAIR_SYSTEM_INSTRUCTION as TECHNICAL_SPEC_REPAIR_SYSTEM_INSTRUCTION,
+)
+from agent.extractors.technical_spec.prompt import (
+    render_repair_content as render_technical_spec_repair_content,
+)
+from agent.extractors.technical_spec.validation import resolve_category_precedence
 
 _GENERIC_KINDS = {"finding", "date", "risk"}
+_CONTRACT_KINDS = {"party", "obligation", "payment_term", "clause"}
+_TECHNICAL_SPEC_KINDS = {"requirement", "constraint", "dependency"}
 
 
 def _describe(item: InvalidItem) -> str:
@@ -39,7 +51,10 @@ async def retry_invalid_subset(state: AnalysisState) -> dict[str, Any]:
     retry_count = state.get("retry_count", 0) + 1
     generic_invalid = [item for item in invalid_items if item["kind"] in _GENERIC_KINDS]
     contract_invalid = [
-        item for item in invalid_items if item["kind"] not in _GENERIC_KINDS
+        item for item in invalid_items if item["kind"] in _CONTRACT_KINDS
+    ]
+    technical_spec_invalid = [
+        item for item in invalid_items if item["kind"] in _TECHNICAL_SPEC_KINDS
     ]
 
     updates: dict[str, Any] = {
@@ -50,6 +65,9 @@ async def retry_invalid_subset(state: AnalysisState) -> dict[str, Any]:
         "pending_obligations": [],
         "pending_payment_terms": [],
         "pending_clauses": [],
+        "pending_requirements": [],
+        "pending_constraints": [],
+        "pending_dependencies": [],
         "retry_count": retry_count,
     }
 
@@ -99,5 +117,35 @@ async def retry_invalid_subset(state: AnalysisState) -> dict[str, Any]:
         updates["pending_payment_terms"] = contract_repaired.payment_terms
         updates["pending_clauses"] = contract_repaired.clauses
         updates["contract_metadata"] = contract_metadata
+
+    if technical_spec_invalid:
+        technical_spec_context = state["technical_spec_context"]
+        technical_spec_provider = state["technical_spec_provider"]
+        technical_spec_user_content = render_technical_spec_repair_content(
+            technical_spec_context, [_describe(item) for item in technical_spec_invalid]
+        )
+        try:
+            (
+                technical_spec_repaired,
+                technical_spec_metadata,
+            ) = await call_with_transport_retry(
+                technical_spec_provider.repair,
+                system_instruction=TECHNICAL_SPEC_REPAIR_SYSTEM_INSTRUCTION,
+                user_content=technical_spec_user_content,
+            )
+        except ProviderRequestError:
+            return {
+                "status": "failed",
+                "failure_reason": (
+                    "Technical spec provider failed during the repair retry."
+                ),
+                "retry_count": retry_count,
+            }
+        updates["pending_requirements"] = resolve_category_precedence(
+            technical_spec_repaired.requirements
+        )
+        updates["pending_constraints"] = technical_spec_repaired.constraints
+        updates["pending_dependencies"] = technical_spec_repaired.dependencies
+        updates["technical_spec_metadata"] = technical_spec_metadata
 
     return updates

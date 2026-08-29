@@ -22,7 +22,13 @@ from agent.analysis.taxonomy import GENERIC_EXTRACTOR
 from agent.classification.taxonomy import DocumentType
 from agent.extractors.contract.context import SectionSpan
 from agent.extractors.contract.providers.openai_provider import OpenAIContractProvider
+from agent.extractors.contract.result import ContractAnalysisResult
 from agent.extractors.contract.taxonomy import CONTRACT_EXTRACTOR
+from agent.extractors.technical_spec.providers.openai_provider import (
+    OpenAITechnicalSpecProvider,
+)
+from agent.extractors.technical_spec.result import TechnicalSpecAnalysisResult
+from agent.extractors.technical_spec.taxonomy import TECHNICAL_SPEC_EXTRACTOR
 from app.core.config import AnalysisSettings, load_analysis_settings
 from app.db.analysis_repository import AnalysisRepository
 from app.db.repository import DocumentRepository
@@ -61,6 +67,22 @@ def _build_contract_provider(settings: AnalysisSettings) -> OpenAIContractProvid
     if not settings.api_key:
         raise ProviderUnavailableError("Contract provider is not configured.")
     return OpenAIContractProvider(
+        api_key=settings.api_key,
+        model=settings.model,
+        timeout_seconds=settings.timeout_seconds,
+        max_output_tokens=settings.max_output_tokens,
+    )
+
+
+def _build_technical_spec_provider(
+    settings: AnalysisSettings,
+) -> OpenAITechnicalSpecProvider:
+    """Reuses the same model/timeout/token configuration as the generic
+    analysis provider; the technical-spec route does not warrant a second
+    set of provider settings."""
+    if not settings.api_key:
+        raise ProviderUnavailableError("Technical spec provider is not configured.")
+    return OpenAITechnicalSpecProvider(
         api_key=settings.api_key,
         model=settings.model,
         timeout_seconds=settings.timeout_seconds,
@@ -118,6 +140,10 @@ async def analyze(document_id: uuid.UUID, session: AsyncSession) -> DocumentAnal
     }
     if document_type == "contract":
         initial_state["contract_provider"] = _build_contract_provider(settings)
+    elif document_type == "technical_specification":
+        initial_state["technical_spec_provider"] = _build_technical_spec_provider(
+            settings
+        )
 
     final_state = await run_analysis_graph(initial_state)
     result = final_state.get("result")
@@ -126,9 +152,12 @@ async def analyze(document_id: uuid.UUID, session: AsyncSession) -> DocumentAnal
             final_state.get("failure_reason") or "Analysis failed."
         )
 
-    extractor = (
-        CONTRACT_EXTRACTOR if result.specialized is not None else GENERIC_EXTRACTOR
-    )
+    if isinstance(result.specialized, ContractAnalysisResult):
+        extractor = CONTRACT_EXTRACTOR
+    elif isinstance(result.specialized, TechnicalSpecAnalysisResult):
+        extractor = TECHNICAL_SPEC_EXTRACTOR
+    else:
+        extractor = GENERIC_EXTRACTOR
     return await analysis_repository.create(
         document_id=document_id,
         document_type=classification.document_type,

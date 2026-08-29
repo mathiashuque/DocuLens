@@ -26,6 +26,14 @@ from agent.extractors.contract.validation import (
     validate_party,
     validate_payment_term,
 )
+from agent.extractors.technical_spec.validation import (
+    dedupe_constraints,
+    dedupe_dependencies,
+    dedupe_requirements,
+    validate_constraint,
+    validate_dependency,
+    validate_requirement,
+)
 
 
 def validate_analysis(state: AnalysisState) -> dict[str, Any]:
@@ -140,6 +148,55 @@ def validate_analysis(state: AnalysisState) -> dict[str, Any]:
                 )
             )
 
+    valid_requirements = list(state.get("valid_requirements", []))
+    valid_constraints = list(state.get("valid_constraints", []))
+    valid_dependencies = list(state.get("valid_dependencies", []))
+
+    for requirement in dedupe_requirements(state.get("pending_requirements", [])):
+        result = validate_requirement(requirement, pages)
+        if result.valid:
+            valid_requirements.append(requirement)
+        else:
+            invalid_items.append(
+                InvalidItem(
+                    kind="requirement",
+                    description=(
+                        f"{requirement.category} requirement citing page "
+                        f"{requirement.source_page}: {requirement.statement}"
+                    ),
+                    error=result.error or "invalid",
+                )
+            )
+
+    for constraint in dedupe_constraints(state.get("pending_constraints", [])):
+        result = validate_constraint(constraint, pages)
+        if result.valid:
+            valid_constraints.append(constraint)
+        else:
+            invalid_items.append(
+                InvalidItem(
+                    kind="constraint",
+                    description=(
+                        f"{constraint.category} constraint citing page "
+                        f"{constraint.source_page}"
+                    ),
+                    error=result.error or "invalid",
+                )
+            )
+
+    for dependency in dedupe_dependencies(state.get("pending_dependencies", [])):
+        result = validate_dependency(dependency, pages)
+        if result.valid:
+            valid_dependencies.append(dependency)
+        else:
+            invalid_items.append(
+                InvalidItem(
+                    kind="dependency",
+                    description=f"dependency {dependency.name!r} citing page {dependency.source_page}",
+                    error=result.error or "invalid",
+                )
+            )
+
     return {
         "valid_findings": valid_findings,
         "valid_dates": valid_dates,
@@ -148,6 +205,9 @@ def validate_analysis(state: AnalysisState) -> dict[str, Any]:
         "valid_obligations": valid_obligations,
         "valid_payment_terms": valid_payment_terms,
         "valid_clauses": valid_clauses,
+        "valid_requirements": valid_requirements,
+        "valid_constraints": valid_constraints,
+        "valid_dependencies": valid_dependencies,
         "invalid_items": invalid_items,
     }
 

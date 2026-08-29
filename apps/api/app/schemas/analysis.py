@@ -129,17 +129,72 @@ class ContractAnalysisResponse(BaseModel):
     confidentiality_terms: list[ClauseResponse]
 
 
+class RequirementResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    identifier: str | None
+    statement: str
+    priority: Literal["must", "should", "may", "unspecified"]
+    actor: str | None
+    measurable_criterion: str | None
+    source_page: int
+    evidence: str
+    confidence: float
+
+
+class TechnicalConstraintResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    category: Literal["technology", "performance", "deployment", "compatibility"]
+    statement: str
+    value_text: str | None
+    source_page: int
+    evidence: str
+    confidence: float
+
+
+class TechnicalDependencyResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    name: str
+    dependency_type: str | None
+    description: str
+    source_page: int
+    evidence: str
+    confidence: float
+
+
+class TechnicalSpecAnalysisResponse(BaseModel):
+    type: Literal["technical_specification"] = "technical_specification"
+    extractor: Literal["technical_specification_requirements"] = (
+        "technical_specification_requirements"
+    )
+    functional_requirements: list[RequirementResponse]
+    non_functional_requirements: list[RequirementResponse]
+    security_requirements: list[RequirementResponse]
+    integration_requirements: list[RequirementResponse]
+    constraints: list[TechnicalConstraintResponse]
+    dependencies: list[TechnicalDependencyResponse]
+
+
 class AnalysisResponse(BaseModel):
     id: uuid.UUID
     document_id: uuid.UUID
     document_type: DocumentType
-    extractor: Literal["generic", "contract_terms"]
+    extractor: Literal[
+        "generic", "contract_terms", "technical_specification_requirements"
+    ]
     status: Literal["completed"]
     summary: AnalysisSummaryResponse
     findings: list[FindingResponse]
     important_dates: list[ImportantDateResponse]
     risks: list[RiskResponse]
-    specialized_analysis: ContractAnalysisResponse | None = None
+    specialized_analysis: (
+        ContractAnalysisResponse | TechnicalSpecAnalysisResponse | None
+    ) = None
     provider: str
     model: str
     created_at: datetime
@@ -151,10 +206,12 @@ class AnalysisResponse(BaseModel):
         A plain `model_validate(..., from_attributes=True)` cannot map the
         row's flat `summary_*` columns onto the nested `summary` object, so
         this assembles it explicitly. `specialized_analysis` is populated
-        only when the row's `extractor` is `contract_terms`; other
-        classifications never carry contract child rows.
+        only when the row's `extractor` names a specialized route; other
+        classifications never carry the corresponding child rows.
         """
-        specialized_analysis = None
+        specialized_analysis: (
+            ContractAnalysisResponse | TechnicalSpecAnalysisResponse | None
+        ) = None
         if analysis.extractor == "contract_terms":  # type: ignore[attr-defined]
             clauses = list(analysis.contract_clauses)  # type: ignore[attr-defined]
             specialized_analysis = ContractAnalysisResponse(
@@ -189,6 +246,38 @@ class AnalysisResponse(BaseModel):
                     ClauseResponse.model_validate(clause)
                     for clause in clauses
                     if clause.category == "confidentiality"
+                ],
+            )
+        elif analysis.extractor == "technical_specification_requirements":  # type: ignore[attr-defined]
+            requirements = list(analysis.technical_requirements)  # type: ignore[attr-defined]
+            specialized_analysis = TechnicalSpecAnalysisResponse(
+                functional_requirements=[
+                    RequirementResponse.model_validate(item)
+                    for item in requirements
+                    if item.category == "functional"
+                ],
+                non_functional_requirements=[
+                    RequirementResponse.model_validate(item)
+                    for item in requirements
+                    if item.category == "non_functional"
+                ],
+                security_requirements=[
+                    RequirementResponse.model_validate(item)
+                    for item in requirements
+                    if item.category == "security"
+                ],
+                integration_requirements=[
+                    RequirementResponse.model_validate(item)
+                    for item in requirements
+                    if item.category == "integration"
+                ],
+                constraints=[
+                    TechnicalConstraintResponse.model_validate(item)
+                    for item in analysis.technical_constraints  # type: ignore[attr-defined]
+                ],
+                dependencies=[
+                    TechnicalDependencyResponse.model_validate(item)
+                    for item in analysis.technical_dependencies  # type: ignore[attr-defined]
                 ],
             )
 

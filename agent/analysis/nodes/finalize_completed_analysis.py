@@ -4,20 +4,22 @@ Pure and I/O-free by design ("persist_completed_analysis" in the workflow
 diagram): the actual database write happens in the API service after the
 graph returns, keeping SQLAlchemy sessions out of graph/domain code.
 
-For a `contract` document, this also assembles the specialized
-`ContractAnalysisResult` (from the same validated, retried item sets) and
-attaches it to the generic result's `specialized` field. A contract whose
-common generic analysis succeeded but whose contract items never became
-usable (no contract_metadata reached this node — e.g. the contract provider
-was never called because no invalid contract items forced a repair) still
-persists with a valid, possibly-empty specialized result.
+For a `contract` or `technical_specification` document, this also assembles
+the matching specialized result (from the same validated, retried item
+sets) and attaches it to the generic result's `specialized` field. A
+document whose common generic analysis succeeded but whose specialized
+items never became usable (no specialized metadata reached this node — e.g.
+the specialized provider was never called because no invalid specialized
+items forced a repair) still persists with a valid, possibly-empty
+specialized result.
 """
 
 from typing import Any
 
-from agent.analysis.result import assign_ids
+from agent.analysis.result import SpecializedAnalysisResult, assign_ids
 from agent.analysis.state import AnalysisState
 from agent.extractors.contract.result import assign_contract_ids
+from agent.extractors.technical_spec.result import assign_technical_spec_ids
 
 
 def finalize_completed_analysis(state: AnalysisState) -> dict[str, Any]:
@@ -29,8 +31,9 @@ def finalize_completed_analysis(state: AnalysisState) -> dict[str, Any]:
             "failure_reason": "Analysis completed without a usable provider result.",
         }
 
-    specialized = None
-    if state.get("document_type") == "contract":
+    document_type = state.get("document_type")
+    specialized: SpecializedAnalysisResult | None = None
+    if document_type == "contract":
         contract_metadata = state.get("contract_metadata")
         if contract_metadata is None:
             return {
@@ -46,6 +49,22 @@ def finalize_completed_analysis(state: AnalysisState) -> dict[str, Any]:
             payment_terms=state.get("valid_payment_terms", []),
             clauses=state.get("valid_clauses", []),
             metadata=contract_metadata,
+        )
+    elif document_type == "technical_specification":
+        technical_spec_metadata = state.get("technical_spec_metadata")
+        if technical_spec_metadata is None:
+            return {
+                "status": "failed",
+                "failure_reason": (
+                    "Technical spec analysis completed without a usable "
+                    "technical spec provider result."
+                ),
+            }
+        specialized = assign_technical_spec_ids(
+            requirements=state.get("valid_requirements", []),
+            constraints=state.get("valid_constraints", []),
+            dependencies=state.get("valid_dependencies", []),
+            metadata=technical_spec_metadata,
         )
 
     result = assign_ids(

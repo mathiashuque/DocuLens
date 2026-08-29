@@ -15,6 +15,9 @@ from agent.analysis.types import (
     RiskCandidate,
 )
 from agent.extractors.contract.result import ContractAnalysisResult
+from agent.extractors.technical_spec.result import TechnicalSpecAnalysisResult
+
+SpecializedAnalysisResult = ContractAnalysisResult | TechnicalSpecAnalysisResult
 
 
 @dataclass(frozen=True)
@@ -69,7 +72,7 @@ class GenericAnalysisResult:
     input_tokens: int | None = None
     output_tokens: int | None = None
     retry_count: int = 0
-    specialized: ContractAnalysisResult | None = None
+    specialized: SpecializedAnalysisResult | None = None
 
 
 class AnalysisFailedError(Exception):
@@ -89,7 +92,7 @@ def assign_ids(
     risks: list[RiskCandidate],
     metadata: ProviderMetadata,
     retry_count: int,
-    specialized: ContractAnalysisResult | None = None,
+    specialized: SpecializedAnalysisResult | None = None,
 ) -> GenericAnalysisResult:
     return GenericAnalysisResult(
         summary=summary,
