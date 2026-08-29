@@ -78,7 +78,7 @@ class ExtractionEvalReport:
     )
 
 
-def _match(
+def match_item(
     predicted: tuple[ExtractionEvalItem, ...],
     expected: tuple[ExtractionEvalExpectedItem, ...],
 ) -> CategoryMetrics:
@@ -133,7 +133,7 @@ def _aggregate_category(
     for sample in samples:
         predicted = getattr(sample, predicted_attr)
         expected = getattr(sample, expected_attr)
-        metrics = _match(predicted, expected)
+        metrics = match_item(predicted, expected)
         true_positives += metrics.true_positives
         false_positives += metrics.false_positives
         false_negatives += metrics.false_negatives

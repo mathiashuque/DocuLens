@@ -16,6 +16,16 @@ from agent.analysis.validation import (
     validate_important_date,
     validate_risk,
 )
+from agent.extractors.contract.validation import (
+    dedupe_clauses,
+    dedupe_obligations,
+    dedupe_parties,
+    dedupe_payment_terms,
+    validate_clause,
+    validate_obligation,
+    validate_party,
+    validate_payment_term,
+)
 
 
 def validate_analysis(state: AnalysisState) -> dict[str, Any]:
@@ -67,10 +77,77 @@ def validate_analysis(state: AnalysisState) -> dict[str, Any]:
                 )
             )
 
+    valid_parties = list(state.get("valid_parties", []))
+    valid_obligations = list(state.get("valid_obligations", []))
+    valid_payment_terms = list(state.get("valid_payment_terms", []))
+    valid_clauses = list(state.get("valid_clauses", []))
+
+    for party in dedupe_parties(state.get("pending_parties", [])):
+        result = validate_party(party, pages)
+        if result.valid:
+            valid_parties.append(party)
+        else:
+            invalid_items.append(
+                InvalidItem(
+                    kind="party",
+                    description=f"party {party.name!r} citing page {party.source_page}",
+                    error=result.error or "invalid",
+                )
+            )
+
+    for obligation in dedupe_obligations(state.get("pending_obligations", [])):
+        result = validate_obligation(obligation, pages)
+        if result.valid:
+            valid_obligations.append(obligation)
+        else:
+            invalid_items.append(
+                InvalidItem(
+                    kind="obligation",
+                    description=(
+                        f"obligation on page {obligation.source_page}: "
+                        f"{obligation.description}"
+                    ),
+                    error=result.error or "invalid",
+                )
+            )
+
+    for term in dedupe_payment_terms(state.get("pending_payment_terms", [])):
+        result = validate_payment_term(term, pages)
+        if result.valid:
+            valid_payment_terms.append(term)
+        else:
+            invalid_items.append(
+                InvalidItem(
+                    kind="payment_term",
+                    description=f"payment term citing page {term.source_page}",
+                    error=result.error or "invalid",
+                )
+            )
+
+    for clause in dedupe_clauses(state.get("pending_clauses", [])):
+        result = validate_clause(clause, pages)
+        if result.valid:
+            valid_clauses.append(clause)
+        else:
+            invalid_items.append(
+                InvalidItem(
+                    kind="clause",
+                    description=(
+                        f"{clause.category} clause {clause.title!r} citing page "
+                        f"{clause.source_page}"
+                    ),
+                    error=result.error or "invalid",
+                )
+            )
+
     return {
         "valid_findings": valid_findings,
         "valid_dates": valid_dates,
         "valid_risks": valid_risks,
+        "valid_parties": valid_parties,
+        "valid_obligations": valid_obligations,
+        "valid_payment_terms": valid_payment_terms,
+        "valid_clauses": valid_clauses,
         "invalid_items": invalid_items,
     }
 

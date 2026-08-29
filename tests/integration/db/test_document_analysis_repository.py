@@ -17,6 +17,13 @@ from agent.analysis.result import (
     RiskResult,
 )
 from agent.analysis.types import DocumentSummaryCandidate
+from agent.extractors.contract.result import (
+    ClauseResult,
+    ContractAnalysisResult,
+    ObligationResult,
+    PartyResult,
+    PaymentTermResult,
+)
 from ingestion.models import DocumentPage
 
 
@@ -110,6 +117,117 @@ async def test_create_and_get_latest_completed_round_trips_full_provenance(
     assert len(fetched.risks[0].evidence) == 1
     assert fetched.risks[0].evidence[0].page == 1
     assert fetched.status == "completed"
+
+
+def _contract_result() -> ContractAnalysisResult:
+    return ContractAnalysisResult(
+        parties=(
+            PartyResult(
+                id=uuid.uuid4(),
+                name="Northstar Hosting Ltd.",
+                role="provider",
+                source_page=1,
+                evidence="Northstar Hosting Ltd. (Provider)",
+                confidence=0.97,
+            ),
+        ),
+        obligations=(
+            ObligationResult(
+                id=uuid.uuid4(),
+                obligated_party="Provider",
+                description="Maintain 99.9% availability",
+                beneficiary="Customer",
+                conditions=(),
+                source_page=4,
+                evidence="Provider shall maintain 99.9% monthly availability",
+                confidence=0.94,
+            ),
+        ),
+        payment_terms=(
+            PaymentTermResult(
+                id=uuid.uuid4(),
+                payer="Customer",
+                payee="Provider",
+                amount_text="$1,000/month",
+                schedule_text="due monthly",
+                source_page=2,
+                evidence="Customer shall pay Provider $1,000/month",
+                confidence=0.9,
+            ),
+        ),
+        clauses=(
+            ClauseResult(
+                id=uuid.uuid4(),
+                category="renewal",
+                title="Auto-renewal",
+                description="Renews automatically each year",
+                conditions=(),
+                notice_period_text="30 days",
+                source_page=5,
+                evidence="renews automatically each year",
+                confidence=0.8,
+            ),
+        ),
+        provider="openai",
+        model="gpt-4o-mini",
+        latency_ms=400,
+        input_tokens=1200,
+        output_tokens=300,
+    )
+
+
+@pytest.mark.asyncio
+async def test_contract_result_round_trips_specialized_provenance(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    created = await repository.create(
+        document_id=document_id,
+        document_type="contract",
+        extractor="contract_terms",
+        result=_result(specialized=_contract_result()),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.id == created.id
+    assert fetched.extractor == "contract_terms"
+    assert len(fetched.contract_parties) == 1
+    assert fetched.contract_parties[0].name == "Northstar Hosting Ltd."
+    assert len(fetched.contract_obligations) == 1
+    assert fetched.contract_obligations[0].obligated_party == "Provider"
+    assert len(fetched.contract_payment_terms) == 1
+    assert fetched.contract_payment_terms[0].amount_text == "$1,000/month"
+    assert len(fetched.contract_clauses) == 1
+    assert fetched.contract_clauses[0].category == "renewal"
+
+
+@pytest.mark.asyncio
+async def test_non_contract_result_persists_no_contract_children(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.contract_parties == []
+    assert fetched.contract_obligations == []
+    assert fetched.contract_payment_terms == []
+    assert fetched.contract_clauses == []
 
 
 @pytest.mark.asyncio
