@@ -12,6 +12,7 @@ from app.api.analysis import router as analysis_router
 from app.api.classification import router as classification_router
 from app.api.documents import router as documents_router
 from app.api.health import router as health_router
+from app.api.retrieval import router as retrieval_router
 from app.db.session import dispose_engine
 
 
@@ -26,3 +27,4 @@ app.include_router(health_router)
 app.include_router(documents_router)
 app.include_router(classification_router)
 app.include_router(analysis_router)
+app.include_router(retrieval_router)
