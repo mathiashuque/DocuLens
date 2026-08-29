@@ -166,6 +166,51 @@ def load_embedding_settings() -> EmbeddingSettings:
 
 
 @dataclass(frozen=True)
+class GroundedQaSettings:
+    """Grounded QA generation provider/model/context/question-bound
+    configuration.
+
+    Read lazily at the grounded-QA boundary only (the questions service);
+    never at app import, `/health`, or GET routes, so a missing key never
+    breaks unrelated requests.
+    """
+
+    api_key: str | None
+    model: str
+    timeout_seconds: float
+    max_output_tokens: int
+    max_context_chunks: int
+    max_context_chars: int
+    max_question_chars: int
+
+
+DEFAULT_GROUNDED_QA_MODEL = "gpt-4o-mini"
+DEFAULT_GROUNDED_QA_TIMEOUT_SECONDS = 30.0
+DEFAULT_GROUNDED_QA_MAX_OUTPUT_TOKENS = 800
+DEFAULT_GROUNDED_QA_MAX_CONTEXT_CHUNKS = 5
+DEFAULT_GROUNDED_QA_MAX_CONTEXT_CHARS = 8000
+DEFAULT_GROUNDED_QA_MAX_QUESTION_CHARS = 2000
+
+
+def load_grounded_qa_settings() -> GroundedQaSettings:
+    return GroundedQaSettings(
+        api_key=os.environ.get("OPENAI_API_KEY") or None,
+        model=os.environ.get("GROUNDED_QA_MODEL", DEFAULT_GROUNDED_QA_MODEL),
+        timeout_seconds=DEFAULT_GROUNDED_QA_TIMEOUT_SECONDS,
+        max_output_tokens=DEFAULT_GROUNDED_QA_MAX_OUTPUT_TOKENS,
+        max_context_chunks=_positive_int(
+            "GROUNDED_QA_MAX_CONTEXT_CHUNKS", DEFAULT_GROUNDED_QA_MAX_CONTEXT_CHUNKS
+        ),
+        max_context_chars=_positive_int(
+            "GROUNDED_QA_MAX_CONTEXT_CHARS", DEFAULT_GROUNDED_QA_MAX_CONTEXT_CHARS
+        ),
+        max_question_chars=_positive_int(
+            "GROUNDED_QA_MAX_QUESTION_CHARS", DEFAULT_GROUNDED_QA_MAX_QUESTION_CHARS
+        ),
+    )
+
+
+@dataclass(frozen=True)
 class DatabaseSettings:
     """Canonical application database connection setting.
 
