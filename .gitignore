@@ -87,3 +87,5 @@ temp/
 *.tmp
 *.bak
 
+# Local implementation prompts
+docs/prompts/
