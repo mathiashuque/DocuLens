@@ -44,32 +44,55 @@ Prerequisites: Docker Engine with the Compose plugin (`docker compose version`).
    docker compose logs -f api
    ```
 
-4. Call the health endpoint from the host (default port `8000`, or whatever
+4. Apply database migrations (not run automatically at container start):
+
+   ```sh
+   docker compose exec api alembic -c apps/api/alembic.ini upgrade head
+   ```
+
+5. Call the health endpoint from the host (default port `8000`, or whatever
    `API_HOST_PORT` is set to in `.env`):
 
    ```sh
    curl --fail http://localhost:8000/health
    ```
 
-5. Stop the stack without losing database data:
+6. Create and retrieve a document:
+
+   ```sh
+   curl --fail -X POST http://localhost:8000/api/documents \
+     -F "file=@/path/to/file.pdf;type=application/pdf"
+   curl --fail http://localhost:8000/api/documents/<id-from-the-response>
+   ```
+
+7. Stop the stack without losing database data:
 
    ```sh
    docker compose down
    ```
 
    Data persists in the named volume `doculens_pgdata` and is restored the
-   next time you run `docker compose up -d`.
+   next time you run `docker compose up -d` (migrations do not need to be
+   reapplied unless the schema changed).
 
-6. To intentionally delete the local database and start from empty data,
+8. To intentionally delete the local database and start from empty data,
    remove the volume as well (destructive — this cannot be undone):
 
    ```sh
    docker compose down -v
    ```
 
+### Running migrations outside Compose
+
+Against any database reachable via `DATABASE_URL` (see `.env.example`):
+
+```sh
+alembic -c apps/api/alembic.ini upgrade head
+alembic -c apps/api/alembic.ini downgrade base
+```
+
 Notes:
 
-- The PostgreSQL/pgvector connection variables (`POSTGRES_DB`,
-  `POSTGRES_USER`, `POSTGRES_PASSWORD`) are provided to the `api` container
-  ahead of the persistence integration slice; no current API code reads them.
 - The database port is not published to the host by default.
+- `POST /api/documents/parse` remains a stateless, database-free parse — it
+  works even when PostgreSQL is unavailable.

@@ -51,7 +51,12 @@ async def read_bounded_body(upload: UploadFile, max_bytes: int) -> bytes:
 
 async def read_and_parse_pdf(
     upload: UploadFile, settings: UploadSettings
-) -> tuple[str, ParsedDocument]:
+) -> tuple[str, bytes, ParsedDocument]:
+    """Validate, read, and parse an upload.
+
+    Returns the exact uploaded bytes alongside the parse result so callers
+    that need them (e.g. content hashing) don't re-read the stream.
+    """
     if upload.content_type != PDF_CONTENT_TYPE:
         raise UnsupportedFileTypeError("Declared content type is not application/pdf.")
 
@@ -62,4 +67,4 @@ async def read_and_parse_pdf(
 
     parsed = parse_pdf(data, max_pages=settings.max_document_pages)
     filename = sanitize_filename(upload.filename)
-    return filename, parsed
+    return filename, data, parsed
