@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { getBackendBaseUrl, BackendConfigError } from "@/lib/backend-config";
 import { parseIndexResponseForDocument } from "@/lib/question-schema";
+import { anonymousHeader, anonymousSessionFor, applyAnonymousCookie } from "@/lib/anonymous-session";
 
 export const runtime = "nodejs";
 const REQUEST_TIMEOUT_MS = 60_000;
@@ -19,8 +20,10 @@ function detail(body: unknown): string | undefined {
   return undefined;
 }
 
-export async function POST(_request: Request, { params }: RouteContext) {
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const { documentId } = await params;
+  let anonymousSession: ReturnType<typeof anonymousSessionFor>;
+  try { anonymousSession = anonymousSessionFor(request); } catch { return safeError(502, "server_configuration", "Usage protection is not configured."); }
   let baseUrl: string;
   try { baseUrl = getBackendBaseUrl(); } catch (error) {
     if (error instanceof BackendConfigError) return safeError(502, "server_configuration", "The Q&A service is not configured.");
@@ -30,7 +33,7 @@ export async function POST(_request: Request, { params }: RouteContext) {
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   let response: Response;
   try {
-    response = await fetch(`${baseUrl}/api/documents/${encodeURIComponent(documentId)}/index`, { method: "POST", signal: controller.signal });
+    response = await fetch(`${baseUrl}/api/documents/${encodeURIComponent(documentId)}/index`, { method: "POST", headers: anonymousHeader(anonymousSession), signal: controller.signal });
   } catch {
     return safeError(502, "unavailable", "The Q&A service is currently unavailable.");
   } finally { clearTimeout(timeout); }
@@ -39,8 +42,12 @@ export async function POST(_request: Request, { params }: RouteContext) {
   if (response.status === 200 || response.status === 201) {
     const parsed = parseIndexResponseForDocument(documentId, body);
     return parsed.success
-      ? NextResponse.json(parsed.data, { status: response.status })
+      ? applyAnonymousCookie(NextResponse.json(parsed.data, { status: response.status }), anonymousSession)
       : safeError(502, "malformed_response", "The Q&A service returned an unexpected response.");
+  }
+  if (response.status === 429) {
+    const retryAt = body && typeof body === "object" && "retry_at" in body ? (body as { retry_at?: unknown }).retry_at : null;
+    return applyAnonymousCookie(NextResponse.json({ error: "quota_exceeded", message: "Your daily Q&A preparation allowance is exhausted. Precomputed demos remain available.", retry_at: typeof retryAt === "string" ? retryAt : null }, { status: 429 }), anonymousSession);
   }
   if (response.status === 404 && detail(body) === "Document not found.") return safeError(404, "not_found", "Document not found.");
   if (response.status === 409) {

@@ -126,6 +126,7 @@ async def answer_question(
     session: AsyncSession,
     *,
     provider: GroundedQaProvider | None = None,
+    quota_identity: str | None = None,
 ) -> AnsweredResult | InsufficientEvidenceResult:
     """Answer one bounded question for one completed document index.
 
@@ -142,7 +143,18 @@ async def answer_question(
     settings = load_grounded_qa_settings()
     question = _normalize_question(raw_question, settings)
 
-    _, results = await search_document(document_id, question, top_k, session)
+    if quota_identity is None:
+        # Keeps the established injectable search boundary unchanged in
+        # unmetered local/tests; reserve_quota is also a no-op in this mode.
+        _, results = await search_document(document_id, question, top_k, session)
+    else:
+        _, results = await search_document(
+            document_id,
+            question,
+            top_k,
+            session,
+            quota_identity=quota_identity,
+        )
 
     context_items = build_context(
         results,

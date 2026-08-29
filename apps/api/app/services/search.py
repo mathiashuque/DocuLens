@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.config import EmbeddingSettings, load_embedding_settings
 from app.db.repository import DocumentRepository
 from app.db.retrieval_repository import RetrievalRepository
+from app.services.quota import reserve_quota
 from retrieval.embedding import EmbeddingProviderUnavailableError
 from retrieval.providers.openai_provider import OpenAIEmbeddingProvider
 
@@ -85,6 +86,9 @@ async def search_document(
     raw_query: str,
     top_k: int,
     session: AsyncSession,
+    *,
+    quota_identity: str | None = None,
+    charge_quota: bool = True,
 ) -> tuple[str, list[SearchResultItem]]:
     """Search one document's chunks. Returns `(normalized_query, results)`.
 
@@ -125,6 +129,10 @@ async def search_document(
         dimension=settings.dimension,
         timeout_seconds=settings.timeout_seconds,
     )
+    if charge_quota:
+        await reserve_quota(
+            session, quota_identity, "question", document_id=document_id
+        )
     embedded_query = await provider.embed_query(query)
 
     rows = await retrieval_repository.search(

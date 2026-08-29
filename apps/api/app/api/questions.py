@@ -26,6 +26,7 @@ from app.services.grounded_qa import (
     ProviderUnavailableError,
     answer_question,
 )
+from app.services.quota import require_anonymous_identity
 
 router = APIRouter(prefix="/api/documents")
 
@@ -38,10 +39,15 @@ async def ask_question_route(
     document_id: uuid.UUID,
     request: QuestionRequest,
     session: AsyncSession = Depends(get_session),  # noqa: B008
+    quota_identity: str | None = Depends(require_anonymous_identity),
 ) -> QuestionResponse:
     try:
         result = await answer_question(
-            document_id, request.question, request.top_k, session
+            document_id,
+            request.question,
+            request.top_k,
+            session,
+            quota_identity=quota_identity,
         )
     except DocumentNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.") from exc

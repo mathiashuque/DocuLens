@@ -1,8 +1,12 @@
 import { UploadForm } from "@/components/UploadForm";
+import { DemoCards } from "@/components/DemoCards";
+import { UsageAllowance } from "@/components/UsageAllowance";
+import { fetchDemos } from "@/lib/demo-client";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const demos = await fetchDemos();
   return (
-    <div className="flex flex-1 flex-col items-center justify-center px-6 py-24">
+    <div className="flex flex-1 flex-col items-center px-6 py-24">
       <div className="w-full max-w-xl">
         <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 sm:text-4xl">
           Understand complex documents with AI.
@@ -16,8 +20,10 @@ export default function HomePage() {
 
         <div className="mt-10 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm">
           <UploadForm />
+          <UsageAllowance />
         </div>
       </div>
+      <DemoCards demos={demos} />
     </div>
   );
 }

@@ -6,7 +6,8 @@ export type TriggerAnalysisFailureKind =
   | "provider_unavailable"
   | "provider_invalid"
   | "malformed_response"
-  | "unavailable";
+  | "unavailable"
+  | "quota_exceeded";
 
 export type TriggerAnalysisResult =
   | { ok: true; analysis: Analysis }
@@ -20,6 +21,16 @@ function extractMessage(body: unknown): string | undefined {
     }
   }
   return undefined;
+}
+
+function quotaMessage(body: unknown) {
+  const base = extractMessage(body) ??
+    "Your daily analysis allowance is exhausted. Precomputed demos remain available.";
+  if (!body || typeof body !== "object" || !("retry_at" in body)) return base;
+  const retryAt = (body as { retry_at?: unknown }).retry_at;
+  if (typeof retryAt !== "string") return base;
+  const reset = new Date(retryAt);
+  return Number.isNaN(reset.getTime()) ? base : `${base} It resets ${reset.toLocaleString()}.`;
 }
 
 /**
@@ -86,6 +97,14 @@ export async function triggerAnalysis(
       message:
         extractMessage(body) ??
         "This document has no extracted text available to analyze.",
+    };
+  }
+
+  if (response.status === 429) {
+    return {
+      ok: false,
+      kind: "quota_exceeded",
+      message: quotaMessage(body),
     };
   }
 

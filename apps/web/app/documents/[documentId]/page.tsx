@@ -2,9 +2,11 @@ import { notFound } from "next/navigation";
 
 import { AnalysisPanel } from "@/components/analysis/AnalysisPanel";
 import { AskDocuLens } from "@/components/questions/AskDocuLens";
+import { CuratedDemoQuestions } from "@/components/questions/CuratedDemoQuestions";
 import { DocumentSummary } from "@/components/DocumentSummary";
 import { PageList } from "@/components/PageList";
 import { SectionList } from "@/components/SectionList";
+import { UsageAllowance } from "@/components/UsageAllowance";
 import { loadAnalysis } from "@/lib/analysis-client";
 import { fetchDocument } from "@/lib/backend-client";
 import { BackendError } from "@/lib/errors";
@@ -41,17 +43,30 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-16">
       <DocumentSummary document={document} />
+      {document.demo_slug ? (
+        <aside className="rounded-md border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950">
+          <p className="font-semibold">Precomputed demo</p>
+          <p className="mt-1">This synthetic document, analysis, and its example answers were curated in advance. Loading it does not call an AI provider.</p>
+        </aside>
+      ) : null}
       <AnalysisPanel
         documentId={document.id}
         documentStatus={document.status}
         documentPageNumbers={document.pages.map((page) => page.page_number)}
         initialLoad={analysisLoad}
       />
-      <AskDocuLens
-        documentId={document.id}
-        documentStatus={document.status}
-        documentPageNumbers={document.pages.map((page) => page.page_number)}
-      />
+      {document.demo_questions ? (
+        <CuratedDemoQuestions questions={document.demo_questions} />
+      ) : (
+        <div>
+          <AskDocuLens
+            documentId={document.id}
+            documentStatus={document.status}
+            documentPageNumbers={document.pages.map((page) => page.page_number)}
+          />
+          <UsageAllowance documentId={document.id} />
+        </div>
+      )}
       <SectionList sections={document.sections} />
       <PageList pages={document.pages} />
     </div>

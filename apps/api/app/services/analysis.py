@@ -33,8 +33,13 @@ from app.core.config import AnalysisSettings, load_analysis_settings
 from app.db.analysis_repository import AnalysisRepository
 from app.db.repository import DocumentRepository
 from app.models.document import Document, DocumentAnalysis
-from app.services.classification import DocumentNotFoundError, TextlessDocumentError
+from app.services.classification import (
+    DocumentNotFoundError,
+    TextlessDocumentError,
+    has_usable_text,
+)
 from app.services.classification import classify as ensure_classification_result
+from app.services.quota import reserve_quota
 
 __all__ = [
     "AnalysisNotFoundError",
@@ -97,7 +102,12 @@ async def _load_document(document_id: uuid.UUID, session: AsyncSession) -> Docum
     return document
 
 
-async def analyze(document_id: uuid.UUID, session: AsyncSession) -> DocumentAnalysis:
+async def analyze(
+    document_id: uuid.UUID,
+    session: AsyncSession,
+    *,
+    quota_identity: str | None = None,
+) -> DocumentAnalysis:
     """Analyze a document, or return its existing completed result.
 
     Idempotent for an already-completed document: no second provider call
@@ -110,10 +120,18 @@ async def analyze(document_id: uuid.UUID, session: AsyncSession) -> DocumentAnal
     if existing is not None:
         return existing
 
-    classification = await ensure_classification_result(document_id, session)
+    if not has_usable_text(document):
+        raise TextlessDocumentError(str(document_id))
 
+    # Provider construction is a configuration check, not paid work. Keep it
+    # before the durable reservation so definitive pre-provider failures are free.
     settings = load_analysis_settings()
     provider = _build_provider(settings)
+    await reserve_quota(session, quota_identity, "analysis")
+
+    classification = await ensure_classification_result(
+        document_id, session, quota_identity=quota_identity, charge_quota=False
+    )
 
     pages = [(page.page_number, page.text) for page in document.pages]
     section_titles = [section.title for section in document.sections]

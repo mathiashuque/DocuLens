@@ -4,9 +4,23 @@ import uuid
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 ParseStatus = Literal["parsed", "ocr_required"]
+
+
+class DemoCitationResponse(BaseModel):
+    chunk_id: uuid.UUID
+    page: int = Field(gt=0)
+    evidence: str = Field(min_length=1)
+
+
+class DemoQuestionResponse(BaseModel):
+    id: str = Field(min_length=1)
+    question: str = Field(min_length=1)
+    status: Literal["answered", "insufficient_evidence"]
+    answer: str = Field(min_length=1)
+    citations: list[DemoCitationResponse]
 
 
 class DocumentPageResponse(BaseModel):
@@ -49,3 +63,17 @@ class DocumentResponse(BaseModel):
     created_at: datetime
     pages: list[DocumentPageResponse]
     sections: list[DocumentSectionResponse]
+    demo_slug: str | None = None
+    demo_title: str | None = None
+    demo_description: str | None = None
+    demo_document_type: str | None = None
+    demo_questions: list[DemoQuestionResponse] | None = None
+
+
+class DemoCardResponse(BaseModel):
+    slug: str
+    title: str
+    description: str
+    document_type: Literal["contract", "technical_specification", "generic"]
+    page_count: int
+    document_id: uuid.UUID

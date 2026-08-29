@@ -39,6 +39,7 @@ class _FakeDocument:
     def __init__(self, *, document_id: uuid.UUID, pages=None, sections=None) -> None:
         self.id = document_id
         self.filename = "doc.pdf"
+        self.status = "parsed"
         self.pages = pages if pages is not None else [_FakePage(1, "Some real text.")]
         self.sections = sections or []
 
@@ -102,7 +103,7 @@ async def test_fake_graph_success_persists_one_result(
     monkeypatch.setattr("app.services.analysis.DocumentRepository", document_repo)
     monkeypatch.setattr("app.services.analysis.AnalysisRepository", analysis_repo)
 
-    async def fake_ensure_classification(_document_id, _session):
+    async def fake_ensure_classification(_document_id, _session, **_kwargs):
         return _FakeClassification()
 
     monkeypatch.setattr(
@@ -137,7 +138,7 @@ async def test_repeated_post_uses_existing_result_without_classification_or_grap
     monkeypatch.setattr("app.services.analysis.DocumentRepository", document_repo)
     monkeypatch.setattr("app.services.analysis.AnalysisRepository", analysis_repo)
 
-    async def _fail_classify(_document_id, _session):
+    async def _fail_classify(_document_id, _session, **_kwargs):
         raise AssertionError("must not ensure classification on repeated POST")
 
     monkeypatch.setattr(
@@ -162,7 +163,7 @@ async def test_unknown_document_never_invokes_classification(
     document_repo = _FakeDocumentRepository(None)
     monkeypatch.setattr("app.services.analysis.DocumentRepository", document_repo)
 
-    async def _fail_classify(_document_id, _session):
+    async def _fail_classify(_document_id, _session, **_kwargs):
         raise AssertionError("must not ensure classification for an unknown document")
 
     monkeypatch.setattr(
@@ -174,22 +175,22 @@ async def test_unknown_document_never_invokes_classification(
 
 
 @pytest.mark.asyncio
-async def test_textless_document_propagates_from_classification_gate(
+async def test_textless_document_fails_before_provider_configuration(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     document_id = uuid.uuid4()
-    document = _FakeDocument(document_id=document_id)
+    document = _FakeDocument(document_id=document_id, pages=[_FakePage(1, "")])
     document_repo = _FakeDocumentRepository(document)
     analysis_repo = _FakeAnalysisRepository(existing=None)
 
     monkeypatch.setattr("app.services.analysis.DocumentRepository", document_repo)
     monkeypatch.setattr("app.services.analysis.AnalysisRepository", analysis_repo)
 
-    async def _raise_textless(_document_id, _session):
-        raise TextlessDocumentError(str(document_id))
+    async def _must_not_classify(_document_id, _session, **_kwargs):
+        raise AssertionError("textless documents must fail before classification")
 
     monkeypatch.setattr(
-        "app.services.analysis.ensure_classification_result", _raise_textless
+        "app.services.analysis.ensure_classification_result", _must_not_classify
     )
 
     with pytest.raises(TextlessDocumentError):
@@ -208,7 +209,7 @@ async def test_missing_provider_configuration_maps_to_unavailable(
     monkeypatch.setattr("app.services.analysis.DocumentRepository", document_repo)
     monkeypatch.setattr("app.services.analysis.AnalysisRepository", analysis_repo)
 
-    async def fake_ensure_classification(_document_id, _session):
+    async def fake_ensure_classification(_document_id, _session, **_kwargs):
         return _FakeClassification()
 
     monkeypatch.setattr(
@@ -236,7 +237,7 @@ async def test_failed_graph_run_raises_analysis_failed_without_persisting(
     monkeypatch.setattr("app.services.analysis.DocumentRepository", document_repo)
     monkeypatch.setattr("app.services.analysis.AnalysisRepository", analysis_repo)
 
-    async def fake_ensure_classification(_document_id, _session):
+    async def fake_ensure_classification(_document_id, _session, **_kwargs):
         return _FakeClassification()
 
     monkeypatch.setattr(

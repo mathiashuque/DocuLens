@@ -15,6 +15,7 @@ from app.db.repository import DocumentRepository
 from app.db.retrieval_repository import DuplicateIndexError, RetrievalRepository
 from app.models.document import Document
 from app.models.retrieval import DocumentIndex
+from app.services.quota import reserve_quota
 from ingestion.models import DocumentPage as ParsedPage
 from retrieval.chunking import (
     CHUNKER_VERSION,
@@ -97,6 +98,7 @@ async def index_document(
     *,
     chunking_config: ChunkingConfig = DEFAULT_CHUNKING_CONFIG,
     embed_batch_size: int = 96,
+    quota_identity: str | None = None,
 ) -> tuple[DocumentIndex, bool]:
     """Index `document_id`, or return its existing compatible index.
 
@@ -142,6 +144,7 @@ async def index_document(
         raise IneligibleDocumentError(str(exc)) from exc
 
     provider = _build_provider(settings)
+    await reserve_quota(session, quota_identity, "index")
 
     vectors: list[list[float]] = []
     for start in range(0, len(chunks), embed_batch_size):

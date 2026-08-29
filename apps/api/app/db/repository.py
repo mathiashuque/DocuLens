@@ -79,3 +79,19 @@ class DocumentRepository:
         )
         result = await self._session.execute(statement)
         return result.scalar_one_or_none()
+
+    async def list_demos(self) -> list[Document]:
+        statement = (
+            select(Document)
+            .where(Document.demo_slug.is_not(None))
+            .order_by(Document.demo_slug)
+        )
+        return list((await self._session.execute(statement)).scalars().all())
+
+    async def get_demo_by_slug(self, slug: str) -> Document | None:
+        statement = (
+            select(Document)
+            .where(Document.demo_slug == slug)
+            .options(selectinload(Document.pages), selectinload(Document.sections))
+        )
+        return (await self._session.execute(statement)).scalar_one_or_none()

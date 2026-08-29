@@ -15,6 +15,7 @@ export type QuestionFailureKind =
   | "provider_invalid"
   | "server_configuration"
   | "malformed_response"
+  | "quota_exceeded"
   | "unavailable";
 
 export type QuestionActionResult<T> =
@@ -27,6 +28,15 @@ function messageFrom(body: unknown): string | undefined {
     if (typeof message === "string" && message.trim()) return message;
   }
   return undefined;
+}
+
+function messageWithReset(body: unknown): string | undefined {
+  const message = messageFrom(body);
+  if (!message || !body || typeof body !== "object" || !("retry_at" in body)) return message;
+  const retryAt = (body as { retry_at?: unknown }).retry_at;
+  if (typeof retryAt !== "string") return message;
+  const reset = new Date(retryAt);
+  return Number.isNaN(reset.getTime()) ? message : `${message} It resets ${reset.toLocaleString()}.`;
 }
 
 async function readBody(response: Response): Promise<unknown | undefined> {
@@ -42,7 +52,7 @@ function failureFromResponse(response: Response, body: unknown): QuestionActionR
   const knownKinds: QuestionFailureKind[] = [
     "missing_index", "incompatible_index", "ineligible_document", "invalid_question",
     "not_found", "provider_unavailable", "provider_invalid", "server_configuration",
-    "malformed_response", "unavailable",
+    "malformed_response", "quota_exceeded", "unavailable",
   ];
   const kind = typeof error === "string" && knownKinds.includes(error as QuestionFailureKind)
     ? error as QuestionFailureKind
@@ -50,7 +60,7 @@ function failureFromResponse(response: Response, body: unknown): QuestionActionR
   return {
     ok: false,
     kind,
-    message: messageFrom(body) ?? (response.status === 422
+    message: messageWithReset(body) ?? (response.status === 422
       ? "Enter a valid question and try again."
       : "The Q&A service is currently unavailable. Try again shortly."),
   };

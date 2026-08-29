@@ -21,6 +21,47 @@ def _positive_int(name: str, default: int) -> int:
     return value
 
 
+def _boolean(name: str, default: bool = False) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    value = raw.strip().lower()
+    if value in {"1", "true", "yes", "on"}:
+        return True
+    if value in {"0", "false", "no", "off"}:
+        return False
+    raise InvalidConfigurationError(f"{name} must be a boolean.")
+
+
+@dataclass(frozen=True)
+class AnonymousQuotaSettings:
+    public_demo_mode: bool
+    secret: str | None
+    max_analyses_per_day: int
+    max_indexes_per_day: int
+    max_questions_per_document: int
+    session_max_age_seconds: int
+
+
+def load_anonymous_quota_settings() -> AnonymousQuotaSettings:
+    public_mode = _boolean("PUBLIC_DEMO_MODE", False)
+    secret = os.environ.get("ANONYMOUS_SESSION_SECRET") or None
+    if public_mode and (secret is None or len(secret.encode()) < 32):
+        raise InvalidConfigurationError(
+            "ANONYMOUS_SESSION_SECRET must be at least 32 bytes in public demo mode."
+        )
+    return AnonymousQuotaSettings(
+        public_demo_mode=public_mode,
+        secret=secret,
+        max_analyses_per_day=_positive_int("MAX_ANALYSES_PER_DAY", 3),
+        max_indexes_per_day=_positive_int("MAX_INDEXES_PER_DAY", 3),
+        max_questions_per_document=_positive_int("MAX_QUESTIONS_PER_DOCUMENT", 10),
+        session_max_age_seconds=_positive_int(
+            "ANONYMOUS_SESSION_MAX_AGE_SECONDS", 60 * 60 * 24 * 30
+        ),
+    )
+
+
 @dataclass(frozen=True)
 class UploadSettings:
     max_upload_mb: int = 10

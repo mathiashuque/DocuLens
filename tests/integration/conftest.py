@@ -124,6 +124,7 @@ async def clean_tables(postgres_url: str) -> None:
         await connection.execute(
             text(
                 "TRUNCATE TABLE document_chunks, document_indexes, "
+                "anonymous_usage_buckets, "
                 "document_analyses, document_classifications, "
                 "document_sections, document_pages, documents CASCADE"
             )
