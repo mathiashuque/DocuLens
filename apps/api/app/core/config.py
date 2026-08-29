@@ -120,6 +120,52 @@ def load_analysis_settings() -> AnalysisSettings:
 
 
 @dataclass(frozen=True)
+class EmbeddingSettings:
+    """Embedding provider/model/dimension/batch configuration for indexing
+    and search.
+
+    Read lazily at the retrieval boundary only (index/search services);
+    never at app import, `/health`, upload, or analysis, so a missing key
+    never breaks unrelated requests. `dimension` must match both the
+    configured model's actual output and the `document_chunks.embedding`
+    column defined in the retrieval migration; changing it requires a new
+    migration and an explicit reindex, never a silent runtime change.
+    """
+
+    api_key: str | None
+    model: str
+    dimension: int
+    timeout_seconds: float
+    max_batch_size: int
+    max_query_chars: int
+    max_top_k: int
+
+
+DEFAULT_EMBEDDING_MODEL = "text-embedding-3-small"
+DEFAULT_EMBEDDING_DIMENSION = 1536
+DEFAULT_EMBEDDING_TIMEOUT_SECONDS = 30.0
+DEFAULT_EMBEDDING_MAX_BATCH_SIZE = 96
+DEFAULT_EMBEDDING_MAX_QUERY_CHARS = 2000
+DEFAULT_EMBEDDING_MAX_TOP_K = 20
+
+
+def load_embedding_settings() -> EmbeddingSettings:
+    return EmbeddingSettings(
+        api_key=os.environ.get("OPENAI_API_KEY") or None,
+        model=os.environ.get("EMBEDDING_MODEL", DEFAULT_EMBEDDING_MODEL),
+        dimension=_positive_int("EMBEDDING_DIMENSION", DEFAULT_EMBEDDING_DIMENSION),
+        timeout_seconds=DEFAULT_EMBEDDING_TIMEOUT_SECONDS,
+        max_batch_size=_positive_int(
+            "EMBEDDING_MAX_BATCH_SIZE", DEFAULT_EMBEDDING_MAX_BATCH_SIZE
+        ),
+        max_query_chars=_positive_int(
+            "EMBEDDING_MAX_QUERY_CHARS", DEFAULT_EMBEDDING_MAX_QUERY_CHARS
+        ),
+        max_top_k=_positive_int("EMBEDDING_MAX_TOP_K", DEFAULT_EMBEDDING_MAX_TOP_K),
+    )
+
+
+@dataclass(frozen=True)
 class DatabaseSettings:
     """Canonical application database connection setting.
 
