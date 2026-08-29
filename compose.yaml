@@ -8,6 +8,9 @@ services:
     environment:
       MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
       MAX_DOCUMENT_PAGES: ${MAX_DOCUMENT_PAGES:-40}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CLASSIFICATION_MODEL: ${CLASSIFICATION_MODEL:-gpt-4o-mini}
+      CLASSIFICATION_CONFIDENCE_THRESHOLD: ${CLASSIFICATION_CONFIDENCE_THRESHOLD:-0.65}
       # `db` is the in-network service name; the API never connects via
       # localhost. DATABASE_URL is the canonical setting the app reads.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-doculens}:${POSTGRES_PASSWORD:-doculens_local_only}@db:5432/${POSTGRES_DB:-doculens}
