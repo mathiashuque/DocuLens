@@ -16,6 +16,7 @@ from app.core.config import ClassificationSettings, load_classification_settings
 from app.db.classification_repository import ClassificationRepository
 from app.db.repository import DocumentRepository
 from app.models.document import Document, DocumentClassification
+from app.services.quota import reserve_quota
 
 
 class DocumentNotFoundError(Exception):
@@ -65,7 +66,11 @@ def _to_evidence_rows(result: ClassifiedResult) -> list[dict[str, object]]:
 
 
 async def classify(
-    document_id: uuid.UUID, session: AsyncSession
+    document_id: uuid.UUID,
+    session: AsyncSession,
+    *,
+    quota_identity: str | None = None,
+    charge_quota: bool = True,
 ) -> DocumentClassification:
     """Classify a document, or return its existing completed result.
 
@@ -81,6 +86,8 @@ async def classify(
 
     settings = load_classification_settings()
     provider = _build_provider(settings)
+    if charge_quota:
+        await reserve_quota(session, quota_identity, "analysis")
 
     section_titles = [section.title for section in document.sections]
     pages = [(page.page_number, page.text) for page in document.pages]

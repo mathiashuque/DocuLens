@@ -23,6 +23,7 @@ from app.services.analysis import (
     analyze,
     get_latest_analysis,
 )
+from app.services.quota import require_anonymous_identity
 
 router = APIRouter(prefix="/api/documents")
 
@@ -35,9 +36,10 @@ router = APIRouter(prefix="/api/documents")
 async def analyze_document_route(
     document_id: uuid.UUID,
     session: AsyncSession = Depends(get_session),  # noqa: B008
+    quota_identity: str | None = Depends(require_anonymous_identity),
 ) -> AnalysisResponse:
     try:
-        analysis = await analyze(document_id, session)
+        analysis = await analyze(document_id, session, quota_identity=quota_identity)
     except DocumentNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.") from exc
     except TextlessDocumentError as exc:

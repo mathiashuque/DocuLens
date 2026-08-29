@@ -15,6 +15,7 @@ from app.core.config import load_database_settings
 from app.models.base import Base
 from app.models.document import Document, DocumentPage  # noqa: F401
 from app.models.retrieval import DocumentChunk, DocumentIndex  # noqa: F401
+from app.models.quota import AnonymousUsageBucket  # noqa: F401
 
 config = context.config
 

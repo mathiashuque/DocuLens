@@ -129,3 +129,26 @@ npm run typecheck
 npm run test
 npm run build
 ```
+
+## Precomputed demos
+
+After applying migrations, seed the three original synthetic demos explicitly:
+
+```sh
+python -m app.demo.seed
+```
+
+The command is transactional and idempotent, makes no provider/network calls, and
+fails rather than overwriting a mismatched fixture. In Compose use
+`docker compose exec api python -m app.demo.seed`. Demo analysis and curated answers
+are visibly labeled precomputed.
+
+## Anonymous public quotas
+
+Local development is unmetered by default (`PUBLIC_DEMO_MODE=false`). For a public
+deployment, set `PUBLIC_DEMO_MODE=true` and configure the same unique 32-byte-or-longer
+`ANONYMOUS_SESSION_SECRET` on the API and web services. Defaults allow three new
+analyses and three new indexes per UTC day per signed anonymous session, plus ten
+provider-backed questions per document for that session. Cache hits and curated demo
+reads are free. Cookie-based quotas are cost controls, not strong identity or complete
+abuse prevention; edge-level burst protection remains a deployment responsibility.

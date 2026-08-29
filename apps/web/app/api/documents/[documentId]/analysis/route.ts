@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { BackendConfigError, getBackendBaseUrl } from "@/lib/backend-config";
+import { anonymousHeader, anonymousSessionFor, applyAnonymousCookie } from "@/lib/anonymous-session";
 
 export const runtime = "nodejs";
 
@@ -28,8 +29,10 @@ type RouteContext = { params: Promise<{ documentId: string }> };
  * retries, since a retry could spend a second round of provider tokens after
  * a failure that already completed on the backend.
  */
-export async function POST(_request: NextRequest, { params }: RouteContext) {
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const { documentId } = await params;
+  let anonymousSession: ReturnType<typeof anonymousSessionFor>;
+  try { anonymousSession = anonymousSessionFor(request); } catch { return safeErrorResponse(502, "server_configuration", "Usage protection is not configured."); }
 
   let baseUrl: string;
   try {
@@ -52,7 +55,7 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   try {
     response = await fetch(
       `${baseUrl}/api/documents/${encodeURIComponent(documentId)}/analysis`,
-      { method: "POST", signal: controller.signal }
+      { method: "POST", headers: anonymousHeader(anonymousSession), signal: controller.signal }
     );
   } catch {
     return safeErrorResponse(
@@ -77,7 +80,12 @@ export async function POST(_request: NextRequest, { params }: RouteContext) {
   }
 
   if (response.status === 201) {
-    return NextResponse.json(parsedBody, { status: 201 });
+    return applyAnonymousCookie(NextResponse.json(parsedBody, { status: 201 }), anonymousSession);
+  }
+
+  if (response.status === 429) {
+    const retryAt = parsedBody && typeof parsedBody === "object" && "retry_at" in parsedBody ? (parsedBody as { retry_at?: unknown }).retry_at : null;
+    return applyAnonymousCookie(NextResponse.json({ error: "quota_exceeded", message: "Your daily analysis allowance is exhausted. Precomputed demos remain available.", retry_at: typeof retryAt === "string" ? retryAt : null }, { status: 429 }), anonymousSession);
   }
 
   if (response.status === 404) {

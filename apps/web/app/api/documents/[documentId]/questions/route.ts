@@ -1,7 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 
 import { getBackendBaseUrl, BackendConfigError } from "@/lib/backend-config";
 import { parseQuestionResponseForDocument, questionRequestSchema } from "@/lib/question-schema";
+import { anonymousHeader, anonymousSessionFor, applyAnonymousCookie } from "@/lib/anonymous-session";
 
 export const runtime = "nodejs";
 const REQUEST_TIMEOUT_MS = 60_000;
@@ -16,12 +17,14 @@ function detail(body: unknown): string | undefined {
   return undefined;
 }
 
-export async function POST(request: Request, { params }: RouteContext) {
+export async function POST(request: NextRequest, { params }: RouteContext) {
   const { documentId } = await params;
   let input: unknown;
   try { input = await request.json(); } catch { return safeError(422, "invalid_question", "Enter a valid question and try again."); }
   const parsedInput = questionRequestSchema.safeParse(input);
   if (!parsedInput.success) return safeError(422, "invalid_question", "Enter a valid question and try again.");
+  let anonymousSession: ReturnType<typeof anonymousSessionFor>;
+  try { anonymousSession = anonymousSessionFor(request); } catch { return safeError(502, "server_configuration", "Usage protection is not configured."); }
   let baseUrl: string;
   try { baseUrl = getBackendBaseUrl(); } catch (error) {
     if (error instanceof BackendConfigError) return safeError(502, "server_configuration", "The Q&A service is not configured.");
@@ -32,14 +35,17 @@ export async function POST(request: Request, { params }: RouteContext) {
   let response: Response;
   try {
     response = await fetch(`${baseUrl}/api/documents/${encodeURIComponent(documentId)}/questions`, {
-      method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(parsedInput.data), signal: controller.signal,
+      method: "POST", headers: { "content-type": "application/json", ...anonymousHeader(anonymousSession) }, body: JSON.stringify(parsedInput.data), signal: controller.signal,
     });
   } catch { return safeError(502, "unavailable", "The Q&A service is currently unavailable."); } finally { clearTimeout(timeout); }
   let body: unknown;
   try { body = await response.json(); } catch { return safeError(502, "malformed_response", "The Q&A service returned an unexpected response."); }
   if (response.ok) {
     const result = parseQuestionResponseForDocument(documentId, body);
-    return result.success ? NextResponse.json(result.data) : safeError(502, "malformed_response", "The Q&A service returned an unexpected response.");
+    return result.success ? applyAnonymousCookie(NextResponse.json(result.data), anonymousSession) : safeError(502, "malformed_response", "The Q&A service returned an unexpected response.");
+  }
+  if (response.status === 429) {
+    return applyAnonymousCookie(NextResponse.json({ error: "quota_exceeded", message: "This document’s anonymous question allowance is exhausted. Precomputed demos remain available.", retry_at: null }, { status: 429 }), anonymousSession);
   }
   const upstreamDetail = detail(body);
   if (response.status === 404) {

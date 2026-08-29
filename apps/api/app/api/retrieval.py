@@ -26,6 +26,7 @@ from app.services.indexing import (
 from app.services.indexing import (
     IncompatibleIndexError as IndexIncompatibleIndexError,
 )
+from app.services.quota import require_anonymous_identity
 from app.services.search import (
     DocumentNotFoundError as SearchDocumentNotFoundError,
 )
@@ -50,9 +51,12 @@ async def index_document_route(
     document_id: uuid.UUID,
     response: Response,
     session: AsyncSession = Depends(get_session),  # noqa: B008
+    quota_identity: str | None = Depends(require_anonymous_identity),
 ) -> IndexResponse:
     try:
-        index, created = await index_document(document_id, session)
+        index, created = await index_document(
+            document_id, session, quota_identity=quota_identity
+        )
     except IndexDocumentNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.") from exc
     except (IneligibleDocumentError, ChunkingError) as exc:
@@ -89,10 +93,15 @@ async def search_document_route(
     document_id: uuid.UUID,
     request: SearchRequest,
     session: AsyncSession = Depends(get_session),  # noqa: B008
+    quota_identity: str | None = Depends(require_anonymous_identity),
 ) -> SearchResponse:
     try:
         query, results = await search_document(
-            document_id, request.query, request.top_k, session
+            document_id,
+            request.query,
+            request.top_k,
+            session,
+            quota_identity=quota_identity,
         )
     except SearchDocumentNotFoundError as exc:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Document not found.") from exc

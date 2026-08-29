@@ -18,6 +18,12 @@ services:
       EMBEDDING_MAX_BATCH_SIZE: ${EMBEDDING_MAX_BATCH_SIZE:-96}
       EMBEDDING_MAX_QUERY_CHARS: ${EMBEDDING_MAX_QUERY_CHARS:-2000}
       EMBEDDING_MAX_TOP_K: ${EMBEDDING_MAX_TOP_K:-20}
+      PUBLIC_DEMO_MODE: ${PUBLIC_DEMO_MODE:-false}
+      ANONYMOUS_SESSION_SECRET: ${ANONYMOUS_SESSION_SECRET:-}
+      MAX_ANALYSES_PER_DAY: ${MAX_ANALYSES_PER_DAY:-3}
+      MAX_INDEXES_PER_DAY: ${MAX_INDEXES_PER_DAY:-3}
+      MAX_QUESTIONS_PER_DOCUMENT: ${MAX_QUESTIONS_PER_DOCUMENT:-10}
+      ANONYMOUS_SESSION_MAX_AGE_SECONDS: ${ANONYMOUS_SESSION_MAX_AGE_SECONDS:-2592000}
       # `db` is the in-network service name; the API never connects via
       # localhost. DATABASE_URL is the canonical setting the app reads.
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-doculens}:${POSTGRES_PASSWORD:-doculens_local_only}@db:5432/${POSTGRES_DB:-doculens}
@@ -47,6 +53,9 @@ services:
       # backend via localhost. Never prefix with NEXT_PUBLIC_ — the browser
       # must never see this.
       DOCULENS_API_BASE_URL: http://api:8000
+      PUBLIC_DEMO_MODE: ${PUBLIC_DEMO_MODE:-false}
+      ANONYMOUS_SESSION_SECRET: ${ANONYMOUS_SESSION_SECRET:-}
+      ANONYMOUS_SESSION_MAX_AGE_SECONDS: ${ANONYMOUS_SESSION_MAX_AGE_SECONDS:-2592000}
     depends_on:
       api:
         condition: service_healthy

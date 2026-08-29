@@ -183,4 +183,17 @@ describe("DocumentPage", () => {
       DocumentPage({ params: Promise.resolve({ documentId: "missing" }) })
     ).rejects.toBeInstanceOf(NotFoundSignal);
   });
+
+  it("labels a precomputed demo and replaces live Q&A with curated selections", async () => {
+    fetchDocumentMock.mockResolvedValueOnce(validDocument({
+      demo_slug: "sample-generic-report",
+      demo_questions: [{ id: "missing", question: "What is missing?", status: "insufficient_evidence", answer: "Not provided.", citations: [] }],
+    }));
+    loadAnalysisMock.mockResolvedValueOnce({ status: "ready", analysis: validAnalysis() });
+    const jsx = await DocumentPage({ params: Promise.resolve({ documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }) });
+    render(jsx);
+    expect(screen.getByText("Precomputed demo")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "What is missing?" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Prepare Q&A" })).not.toBeInTheDocument();
+  });
 });

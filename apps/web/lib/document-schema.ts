@@ -42,6 +42,19 @@ export const documentSchema = z.object({
   created_at: z.iso.datetime({ offset: true, local: true }),
   pages: z.array(documentPageSchema),
   sections: z.array(documentSectionSchema),
+  demo_slug: z.string().min(1).nullable().optional(),
+  demo_title: z.string().min(1).nullable().optional(),
+  demo_description: z.string().min(1).nullable().optional(),
+  demo_document_type: z.enum(["contract", "technical_specification", "generic"]).nullable().optional(),
+  demo_questions: z.array(z.object({
+    id: z.string().min(1),
+    question: z.string().min(1),
+    status: z.enum(["answered", "insufficient_evidence"]),
+    answer: z.string().min(1),
+    citations: z.array(z.object({
+      chunk_id: z.uuid(), page: z.number().int().positive(), evidence: z.string().min(1),
+    })),
+  })).nullable().optional(),
 });
 export type Document = z.infer<typeof documentSchema>;
 

@@ -48,6 +48,16 @@ class Document(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+    demo_slug: Mapped[str | None] = mapped_column(
+        String(80), nullable=True, unique=True
+    )
+    demo_version: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    demo_title: Mapped[str | None] = mapped_column(Text, nullable=True)
+    demo_description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    demo_document_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    demo_questions: Mapped[list[dict[str, object]] | None] = mapped_column(
+        JSONB, nullable=True
+    )
 
     pages: Mapped[list["DocumentPage"]] = relationship(
         back_populates="document",
@@ -225,7 +235,7 @@ class DocumentAnalysis(Base):
         nullable=False,
     )
     document_type: Mapped[str] = mapped_column(String(30), nullable=False)
-    extractor: Mapped[str] = mapped_column(String(30), nullable=False)
+    extractor: Mapped[str] = mapped_column(String(50), nullable=False)
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="completed")
     summary_title: Mapped[str | None] = mapped_column(Text, nullable=True)
     summary_purpose: Mapped[str] = mapped_column(Text, nullable=False)

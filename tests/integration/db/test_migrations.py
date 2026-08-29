@@ -35,6 +35,7 @@ async def test_upgrade_head_creates_expected_tables(postgres_url: str) -> None:
     assert "analysis_risk_evidence" in table_names
     assert "document_indexes" in table_names
     assert "document_chunks" in table_names
+    assert "anonymous_usage_buckets" in table_names
 
 
 @pytest.mark.asyncio
