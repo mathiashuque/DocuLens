@@ -8,6 +8,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api.analysis import router as analysis_router
 from app.api.classification import router as classification_router
 from app.api.documents import router as documents_router
 from app.api.health import router as health_router
@@ -24,3 +25,4 @@ app = FastAPI(title="DocuLens API", lifespan=lifespan)
 app.include_router(health_router)
 app.include_router(documents_router)
 app.include_router(classification_router)
+app.include_router(analysis_router)

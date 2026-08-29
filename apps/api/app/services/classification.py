@@ -30,7 +30,7 @@ class ClassificationNotFoundError(Exception):
     """No completed classification exists yet for this document."""
 
 
-def _has_text(document: Document) -> bool:
+def has_usable_text(document: Document) -> bool:
     if document.status == "ocr_required":
         return False
     return any(page.text.strip() for page in document.pages)
@@ -55,7 +55,7 @@ async def _load_eligible_document(
     document = await DocumentRepository(session).get(document_id)
     if document is None:
         raise DocumentNotFoundError(str(document_id))
-    if not _has_text(document):
+    if not has_usable_text(document):
         raise TextlessDocumentError(str(document_id))
     return document
 

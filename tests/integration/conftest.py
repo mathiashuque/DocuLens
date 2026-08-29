@@ -123,8 +123,8 @@ async def clean_tables(postgres_url: str) -> None:
     async with engine.begin() as connection:
         await connection.execute(
             text(
-                "TRUNCATE TABLE document_classifications, document_sections, "
-                "document_pages, documents CASCADE"
+                "TRUNCATE TABLE document_analyses, document_classifications, "
+                "document_sections, document_pages, documents CASCADE"
             )
         )
     await engine.dispose()
