@@ -24,9 +24,9 @@ services:
       MAX_INDEXES_PER_DAY: ${MAX_INDEXES_PER_DAY:-3}
       MAX_QUESTIONS_PER_DOCUMENT: ${MAX_QUESTIONS_PER_DOCUMENT:-10}
       ANONYMOUS_SESSION_MAX_AGE_SECONDS: ${ANONYMOUS_SESSION_MAX_AGE_SECONDS:-2592000}
-      # `db` is the in-network service name; the API never connects via
-      # localhost. DATABASE_URL is the canonical setting the app reads.
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-doculens}:${POSTGRES_PASSWORD:-doculens_local_only}@db:5432/${POSTGRES_DB:-doculens}
+      # An explicit DATABASE_URL (for example, a Neon connection string) takes
+      # precedence. Otherwise use the local `db` service's in-network address.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-doculens}:${POSTGRES_PASSWORD:-doculens_local_only}@db:5432/${POSTGRES_DB:-doculens}}
     healthcheck:
       test:
         - "CMD"

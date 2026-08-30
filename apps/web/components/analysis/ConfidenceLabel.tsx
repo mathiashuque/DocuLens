@@ -7,7 +7,7 @@ export function ConfidenceLabel({ confidence }: { confidence: number }) {
   const percent = Math.round(confidence * 100);
   return (
     <span
-      className="text-xs text-zinc-500"
+      className="text-xs text-ink-subtle"
       title="Heuristic model confidence, not a calibrated probability of correctness."
     >
       Confidence: {percent}% (model estimate)

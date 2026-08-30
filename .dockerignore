@@ -18,7 +18,6 @@ LICENSE
 
 # Not imported by the API image
 apps/web/
-retrieval/
 evals/
 scripts/
 tests/

@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 
 class InvalidConfigurationError(Exception):
@@ -261,6 +262,33 @@ class DatabaseSettings:
     database_url: str
 
 
+def _normalize_database_url(url: str) -> str:
+    """Adapt standard PostgreSQL URLs for this application's async driver.
+
+    Managed providers commonly supply libpq URLs using ``postgresql://`` and
+    ``sslmode=require``. SQLAlchemy's async engine needs the ``asyncpg``
+    dialect and asyncpg names that SSL option ``ssl``.
+    """
+    parsed = urlsplit(url)
+    if parsed.scheme not in {"postgres", "postgresql"}:
+        return url
+
+    query = [
+        ("ssl" if key == "sslmode" and value == "require" else key, value)
+        for key, value in parse_qsl(parsed.query, keep_blank_values=True)
+        if key != "channel_binding"
+    ]
+    return urlunsplit(
+        (
+            "postgresql+asyncpg",
+            parsed.netloc,
+            parsed.path,
+            urlencode(query),
+            parsed.fragment,
+        )
+    )
+
+
 def load_database_settings() -> DatabaseSettings:
     """Read ``DATABASE_URL``, or assemble it from local Postgres variables.
 
@@ -270,7 +298,7 @@ def load_database_settings() -> DatabaseSettings:
     """
     url = os.environ.get("DATABASE_URL")
     if url:
-        return DatabaseSettings(database_url=url)
+        return DatabaseSettings(database_url=_normalize_database_url(url))
 
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = os.environ.get("POSTGRES_PORT", "5432")

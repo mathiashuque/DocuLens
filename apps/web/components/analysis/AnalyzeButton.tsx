@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from "react";
 
+import { Reveal } from "@/components/motion/primitives";
 import { triggerAnalysis } from "@/lib/analysis-actions";
 import type { Analysis } from "@/lib/analysis-schema";
 
@@ -52,7 +53,7 @@ export function AnalyzeButton({
         onClick={handleClick}
         disabled={isSubmitting}
         aria-describedby={state.status === "error" ? errorId : undefined}
-        className="inline-flex w-fit items-center justify-center rounded-md bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]"
       >
         {isSubmitting ? "Analyzing…" : "Analyze document"}
       </button>
@@ -62,15 +63,17 @@ export function AnalyzeButton({
       </p>
 
       {state.status === "error" ? (
-        <p
-          id={errorId}
-          ref={errorRef}
-          role="alert"
-          tabIndex={-1}
-          className="text-sm font-medium text-red-700 focus:outline-none"
-        >
-          {state.message}
-        </p>
+        <Reveal>
+          <p
+            id={errorId}
+            ref={errorRef}
+            role="alert"
+            tabIndex={-1}
+            className="text-sm font-medium text-red-700 focus:outline-none"
+          >
+            {state.message}
+          </p>
+        </Reveal>
       ) : null}
     </div>
   );

@@ -38,18 +38,18 @@ export function ContractSpecializedSections({
 function PartiesSection({ parties }: { parties: Party[] }) {
   return (
     <section aria-labelledby="contract-parties-heading" className="flex flex-col gap-4">
-      <h2 id="contract-parties-heading" className="text-lg font-semibold text-zinc-900">
+      <h2 id="contract-parties-heading" className="text-lg font-semibold text-ink">
         Parties
       </h2>
       {parties.length === 0 ? (
-        <p className="text-sm text-zinc-600">No parties were identified.</p>
+        <p className="text-sm text-ink-muted">No parties were identified.</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {parties.map((party) => (
-            <li key={party.id} className="rounded-md border border-zinc-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-zinc-900">{party.name}</h3>
+            <li key={party.id} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-ink">{party.name}</h3>
               {party.role ? (
-                <p className="mt-1 text-xs text-zinc-500">Role: {party.role}</p>
+                <p className="mt-1 text-xs text-ink-subtle">Role: {party.role}</p>
               ) : null}
               <EvidenceQuote page={party.source_page} quote={party.evidence} />
               <div className="mt-2">
@@ -71,36 +71,36 @@ function ObligationsSection({ obligations }: { obligations: Obligation[] }) {
     >
       <h2
         id="contract-obligations-heading"
-        className="text-lg font-semibold text-zinc-900"
+        className="text-lg font-semibold text-ink"
       >
         Obligations
       </h2>
       {obligations.length === 0 ? (
-        <p className="text-sm text-zinc-600">No obligations were identified.</p>
+        <p className="text-sm text-ink-muted">No obligations were identified.</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {obligations.map((obligation) => (
             <li
               key={obligation.id}
-              className="rounded-md border border-zinc-200 bg-white p-4"
+              className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm"
             >
-              <p className="text-sm text-zinc-700">{obligation.description}</p>
-              <dl className="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-600">
+              <p className="text-sm text-ink-muted">{obligation.description}</p>
+              <dl className="mt-1 flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-muted">
                 {obligation.obligated_party ? (
                   <div>
-                    <dt className="inline font-medium text-zinc-900">Obligated party: </dt>
+                    <dt className="inline font-medium text-ink">Obligated party: </dt>
                     <dd className="inline">{obligation.obligated_party}</dd>
                   </div>
                 ) : null}
                 {obligation.beneficiary ? (
                   <div>
-                    <dt className="inline font-medium text-zinc-900">Beneficiary: </dt>
+                    <dt className="inline font-medium text-ink">Beneficiary: </dt>
                     <dd className="inline">{obligation.beneficiary}</dd>
                   </div>
                 ) : null}
               </dl>
               {obligation.conditions.length > 0 ? (
-                <ul className="mt-1 list-disc pl-5 text-xs text-zinc-600">
+                <ul className="mt-1 list-disc pl-5 text-xs text-ink-muted">
                   {obligation.conditions.map((condition) => (
                     <li key={condition}>{condition}</li>
                   ))}
@@ -126,38 +126,38 @@ function PaymentTermsSection({ terms }: { terms: PaymentTerm[] }) {
     >
       <h2
         id="contract-payment-terms-heading"
-        className="text-lg font-semibold text-zinc-900"
+        className="text-lg font-semibold text-ink"
       >
         Payment terms
       </h2>
       {terms.length === 0 ? (
-        <p className="text-sm text-zinc-600">No payment terms were identified.</p>
+        <p className="text-sm text-ink-muted">No payment terms were identified.</p>
       ) : (
         <ol className="flex flex-col gap-3">
           {terms.map((term) => (
-            <li key={term.id} className="rounded-md border border-zinc-200 bg-white p-4">
-              <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-zinc-600">
+            <li key={term.id} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+              <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-muted">
                 {term.payer ? (
                   <div>
-                    <dt className="inline font-medium text-zinc-900">Payer: </dt>
+                    <dt className="inline font-medium text-ink">Payer: </dt>
                     <dd className="inline">{term.payer}</dd>
                   </div>
                 ) : null}
                 {term.payee ? (
                   <div>
-                    <dt className="inline font-medium text-zinc-900">Payee: </dt>
+                    <dt className="inline font-medium text-ink">Payee: </dt>
                     <dd className="inline">{term.payee}</dd>
                   </div>
                 ) : null}
                 {term.amount_text ? (
                   <div>
-                    <dt className="inline font-medium text-zinc-900">Amount: </dt>
+                    <dt className="inline font-medium text-ink">Amount: </dt>
                     <dd className="inline">{term.amount_text}</dd>
                   </div>
                 ) : null}
                 {term.schedule_text ? (
                   <div>
-                    <dt className="inline font-medium text-zinc-900">Schedule: </dt>
+                    <dt className="inline font-medium text-ink">Schedule: </dt>
                     <dd className="inline">{term.schedule_text}</dd>
                   </div>
                 ) : null}
@@ -178,26 +178,26 @@ function ClauseGroupSection({ title, clauses }: { title: string; clauses: Clause
   const headingId = `contract-${title.toLowerCase()}-heading`;
   return (
     <section aria-labelledby={headingId} className="flex flex-col gap-4">
-      <h2 id={headingId} className="text-lg font-semibold text-zinc-900">
+      <h2 id={headingId} className="text-lg font-semibold text-ink">
         {title}
       </h2>
       {clauses.length === 0 ? (
-        <p className="text-sm text-zinc-600">
+        <p className="text-sm text-ink-muted">
           No {title.toLowerCase()} clause was identified.
         </p>
       ) : (
         <ol className="flex flex-col gap-3">
           {clauses.map((clause) => (
-            <li key={clause.id} className="rounded-md border border-zinc-200 bg-white p-4">
-              <h3 className="text-sm font-semibold text-zinc-900">{clause.title}</h3>
-              <p className="mt-1 text-sm text-zinc-700">{clause.description}</p>
+            <li key={clause.id} className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm">
+              <h3 className="text-sm font-semibold text-ink">{clause.title}</h3>
+              <p className="mt-1 text-sm text-ink-muted">{clause.description}</p>
               {clause.notice_period_text ? (
-                <p className="mt-1 text-xs text-zinc-600">
+                <p className="mt-1 text-xs text-ink-muted">
                   Notice period: {clause.notice_period_text}
                 </p>
               ) : null}
               {clause.conditions.length > 0 ? (
-                <ul className="mt-1 list-disc pl-5 text-xs text-zinc-600">
+                <ul className="mt-1 list-disc pl-5 text-xs text-ink-muted">
                   {clause.conditions.map((condition) => (
                     <li key={condition}>{condition}</li>
                   ))}

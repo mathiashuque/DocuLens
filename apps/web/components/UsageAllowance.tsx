@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { Reveal } from "@/components/motion/primitives";
 import { usageResponseSchema, type UsageResponse } from "@/lib/usage-schema";
 
 export function UsageAllowance({ documentId }: { documentId?: string }) {
@@ -24,8 +25,10 @@ export function UsageAllowance({ documentId }: { documentId?: string }) {
   if (!visible.length) return null;
 
   return (
-    <p className="mt-3 text-xs text-zinc-500" aria-live="polite">
-      Anonymous allowance: {visible.map((item) => `${item.remaining} of ${item.limit} ${item.category}`).join(" · ")} remaining
-    </p>
+    <Reveal>
+      <p className="mt-3 text-xs text-ink-subtle" aria-live="polite">
+        Anonymous allowance: {visible.map((item) => `${item.remaining} of ${item.limit} ${item.category}`).join(" · ")} remaining
+      </p>
+    </Reveal>
   );
 }

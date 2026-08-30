@@ -22,6 +22,7 @@ RUN pip install --no-cache-dir ./apps/api
 # `app` package so PYTHONPATH resolves them without a second install step.
 COPY agent agent
 COPY ingestion ingestion
+COPY retrieval retrieval
 
 # Migration config/history. Not run at container start; see README for the
 # explicit `alembic ... upgrade head` command used for local dev/CI/deploy.
