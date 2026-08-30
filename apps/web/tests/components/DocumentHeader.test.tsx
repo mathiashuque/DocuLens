@@ -19,12 +19,17 @@ function baseDocument(overrides: Partial<Document> = {}): Document {
 }
 
 describe("DocumentHeader", () => {
-  it("renders the filename, status, and a link back to upload", () => {
+  it("renders the filename and status", () => {
     render(<DocumentHeader document={baseDocument()} />);
 
     expect(screen.getByRole("heading", { name: "contract.pdf" })).toBeInTheDocument();
     expect(screen.getByText("Parsed")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Upload another document/ })).toHaveAttribute("href", "/");
+  });
+
+  it("does not duplicate the global brand's back-to-upload link", () => {
+    render(<DocumentHeader document={baseDocument()} />);
+
+    expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("does not render page counts or upload timestamps", () => {

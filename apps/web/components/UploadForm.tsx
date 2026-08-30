@@ -1,6 +1,14 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import { useRouter } from "next/navigation";
 
 import { Reveal } from "@/components/motion/primitives";
@@ -14,12 +22,24 @@ type FormState =
   | { status: "preparing"; documentId: string }
   | { status: "error"; message: string; retryDocumentId?: string };
 
+function FileIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.4" aria-hidden="true">
+      <path d="M3.5 1.5h6l3 3v10a.5.5 0 0 1-.5.5h-8.5a.5.5 0 0 1-.5-.5v-12a.5.5 0 0 1 .5-.5Z" />
+      <path d="M9.5 1.5v3h3" />
+    </svg>
+  );
+}
+
 export function UploadForm() {
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<FormState>({ status: "idle" });
+  const [isDragOver, setIsDragOver] = useState(false);
   const errorRef = useRef<HTMLParagraphElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const errorId = useId();
+  const inputId = useId();
 
   const busy = state.status === "uploading" || state.status === "preparing";
 
@@ -29,31 +49,43 @@ export function UploadForm() {
     }
   }, [state]);
 
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0] ?? null;
-
-    if (!selected) {
-      setFile(null);
-      setState({ status: "idle" });
-      return;
-    }
-
+  function acceptFile(selected: File): boolean {
     if (selected.type !== ACCEPTED_CONTENT_TYPE) {
       setFile(null);
       setState({ status: "error", message: "Choose a PDF file." });
-      event.target.value = "";
-      return;
+      return false;
     }
 
     if (selected.size > MAX_UPLOAD_BYTES) {
       setFile(null);
       setState({ status: "error", message: "That file is larger than 10 MB." });
-      event.target.value = "";
-      return;
+      return false;
     }
 
     setFile(selected);
     setState({ status: "idle" });
+    return true;
+  }
+
+  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const selected = event.target.files?.[0];
+    if (!selected) return;
+    const accepted = acceptFile(selected);
+    if (!accepted) event.target.value = "";
+  }
+
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault();
+    setIsDragOver(false);
+    if (busy) return;
+    const dropped = event.dataTransfer.files[0];
+    if (dropped) acceptFile(dropped);
+  }
+
+  function handleRemove() {
+    setFile(null);
+    setState({ status: "idle" });
+    if (inputRef.current) inputRef.current.value = "";
   }
 
   async function prepareAndEnter(documentId: string) {
@@ -93,28 +125,63 @@ export function UploadForm() {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
-      <div className="flex flex-col gap-2">
-        <label htmlFor="document-file" className="text-sm font-medium text-ink">
-          PDF document
+      {file ? (
+        <div className="flex items-center gap-3 rounded-md border border-hairline bg-surface-muted px-4 py-3">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent-strong">
+            <FileIcon />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium text-ink">{file.name}</p>
+            <p className="text-xs text-ink-subtle">{formatBytes(file.size)}</p>
+          </div>
+          <div className="flex shrink-0 gap-1">
+            <button
+              type="button"
+              onClick={() => inputRef.current?.click()}
+              disabled={busy}
+              className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-muted hover:bg-canvas-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Change
+            </button>
+            <button
+              type="button"
+              onClick={handleRemove}
+              disabled={busy}
+              className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-muted hover:bg-canvas-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      ) : (
+        <label
+          htmlFor={inputId}
+          onDragOver={(event) => { event.preventDefault(); if (!busy) setIsDragOver(true); }}
+          onDragLeave={() => setIsDragOver(false)}
+          onDrop={handleDrop}
+          className={`flex cursor-pointer flex-col items-center gap-1.5 rounded-md border-2 border-dashed px-4 py-8 text-center transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${
+            isDragOver ? "border-accent bg-accent-soft" : "border-hairline hover:border-accent/40"
+          }`}
+        >
+          <span className="text-sm font-medium text-ink">
+            Drop a PDF here, or <span className="text-accent underline underline-offset-2">browse</span>
+          </span>
+          <span className="text-xs text-ink-subtle">Up to 10 MB</span>
         </label>
-        <input
-          id="document-file"
-          name="file"
-          type="file"
-          accept="application/pdf,.pdf"
-          onChange={handleFileChange}
-          disabled={busy}
-          aria-describedby={state.status === "error" ? errorId : undefined}
-          className="block w-full rounded-md border border-zinc-300 text-sm text-ink-muted file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
-        />
-        {file ? (
-          <Reveal>
-            <p className="text-sm text-ink-muted">
-              {file.name} &middot; {formatBytes(file.size)}
-            </p>
-          </Reveal>
-        ) : null}
-      </div>
+      )}
+
+      <input
+        ref={inputRef}
+        id={inputId}
+        name="file"
+        type="file"
+        accept="application/pdf,.pdf"
+        aria-label="PDF document"
+        onChange={handleFileChange}
+        disabled={busy}
+        aria-describedby={state.status === "error" ? errorId : undefined}
+        className="sr-only"
+      />
 
       <button
         type="submit"
@@ -145,13 +212,16 @@ export function UploadForm() {
               const retryDocumentId = state.retryDocumentId;
               if (!retryDocumentId) return null;
               return (
-                <button
-                  type="button"
-                  onClick={() => handleRetryPreparation(retryDocumentId)}
-                  className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]"
-                >
-                  Retry preparation
-                </button>
+                <div className="flex flex-col gap-1.5">
+                  <p className="text-xs text-ink-subtle">Your file is already uploaded — retrying only resumes preparation.</p>
+                  <button
+                    type="button"
+                    onClick={() => handleRetryPreparation(retryDocumentId)}
+                    className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]"
+                  >
+                    Retry preparation
+                  </button>
+                </div>
               );
             })()}
           </div>

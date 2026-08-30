@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -70,6 +70,55 @@ describe("UploadForm", () => {
     expect(screen.getByText(/report\.pdf/)).toBeInTheDocument();
     expect(screen.getByText(/2(\.0)? KB/)).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Upload document" })).toBeEnabled();
+  });
+
+  it("lets the user change the selected file via the Change action", async () => {
+    const user = userEvent.setup();
+    render(<UploadForm />);
+
+    await user.upload(screen.getByLabelText("PDF document"), pdfFile("first.pdf"));
+    expect(screen.getByText("first.pdf")).toBeInTheDocument();
+
+    await user.upload(screen.getByLabelText("PDF document"), pdfFile("second.pdf"));
+    await user.click(screen.getByRole("button", { name: "Change" }));
+
+    expect(screen.getByText("second.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("first.pdf")).not.toBeInTheDocument();
+  });
+
+  it("lets the user remove the selected file and returns to the dropzone", async () => {
+    const user = userEvent.setup();
+    render(<UploadForm />);
+
+    await user.upload(screen.getByLabelText("PDF document"), pdfFile("report.pdf"));
+    await user.click(screen.getByRole("button", { name: "Remove" }));
+
+    expect(screen.queryByText("report.pdf")).not.toBeInTheDocument();
+    expect(screen.getByText(/Drop a PDF here/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Upload document" })).toBeDisabled();
+  });
+
+  it("accepts a valid PDF dropped onto the dropzone", async () => {
+    render(<UploadForm />);
+    const dropzone = screen.getByText(/Drop a PDF here/).closest("label");
+    expect(dropzone).not.toBeNull();
+
+    fireEvent.drop(dropzone!, { dataTransfer: { files: [pdfFile("dropped.pdf")] } });
+
+    expect(await screen.findByText("dropped.pdf")).toBeInTheDocument();
+  });
+
+  it("rejects a non-PDF file dropped onto the dropzone without a network call", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+    render(<UploadForm />);
+    const dropzone = screen.getByText(/Drop a PDF here/).closest("label");
+
+    const textFile = new File(["hello"], "notes.txt", { type: "text/plain" });
+    fireEvent.drop(dropzone!, { dataTransfer: { files: [textFile] } });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Choose a PDF file.");
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("rejects a non-PDF file client-side without a network call", async () => {

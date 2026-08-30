@@ -5,6 +5,16 @@ import { describe, expect, it } from "vitest";
 import { CuratedDemoQuestions } from "@/components/questions/CuratedDemoQuestions";
 
 describe("CuratedDemoQuestions", () => {
+  it("shows a compact precomputed-demo notice alongside the chat-style questions", () => {
+    render(<CuratedDemoQuestions questions={[{
+      id: "payment", question: "When is payment due?", status: "answered",
+      answer: "On the first business day.",
+      citations: [{ chunk_id: "1a5501f3-425d-4d34-b7e2-7db61e37351e", page: 2, evidence: "first business day" }],
+    }]} />);
+    expect(screen.getByText("Precomputed demo")).toBeInTheDocument();
+    expect(screen.getByText(/never calls an AI provider/)).toBeInTheDocument();
+  });
+
   it("reveals only an exactly selected precomputed answer with inline page evidence", async () => {
     const user = userEvent.setup();
     render(<CuratedDemoQuestions questions={[{

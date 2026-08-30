@@ -6,7 +6,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "DocuLens",
   description:
-    "DocuLens turns complex documents into structured, evidence-backed analysis.",
+    "Upload a PDF and ask it anything. DocuLens answers with exact page evidence, or tells you honestly when the document doesn't say.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

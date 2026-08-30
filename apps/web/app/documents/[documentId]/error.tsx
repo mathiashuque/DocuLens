@@ -13,7 +13,7 @@ export default function DocumentError({ reset }: { error: Error; reset: () => vo
         <button
           type="button"
           onClick={reset}
-          className="inline-flex items-center justify-center rounded-md border border-zinc-300 px-5 py-2.5 text-sm font-semibold text-ink hover:bg-zinc-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]"
+          className="inline-flex items-center justify-center rounded-md border border-hairline px-5 py-2.5 text-sm font-semibold text-ink hover:bg-canvas-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]"
         >
           Try again
         </button>

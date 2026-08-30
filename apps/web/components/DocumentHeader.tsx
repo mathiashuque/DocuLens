@@ -1,25 +1,18 @@
-import Link from "next/link";
-
 import { StatusBadge } from "@/components/StatusBadge";
 import type { Document } from "@/lib/document-schema";
 
 /**
- * Compact chat-workspace identity bar: filename and status only. No page
- * counts, upload timestamp, or other document-inspection metadata — the
+ * Compact chat-workspace identity strip: filename and status only. No back
+ * link of its own — the global brand mark in the app shell already goes
+ * home, so this doesn't duplicate that affordance in a second header-shaped
+ * row. No page counts, upload timestamp, or other inspection metadata — the
  * `/documents/[documentId]` route is a focused chat, not a summary dashboard.
  */
 export function DocumentHeader({ document }: { document: Document }) {
   return (
-    <header className="flex flex-col gap-4 border-b border-hairline pb-6">
-      <Link
-        href="/"
-        className="w-fit text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
-      >
-        &larr; Upload another document
-      </Link>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="min-w-0 break-words text-2xl font-semibold tracking-tight text-ink">
+    <div className="flex flex-col gap-3 border-b border-hairline pb-4">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+        <h1 className="min-w-0 break-words text-lg font-semibold tracking-tight text-ink">
           {document.filename}
         </h1>
         <StatusBadge status={document.status} />
@@ -34,6 +27,6 @@ export function DocumentHeader({ document }: { document: Document }) {
           image, and OCR is not yet supported, so it cannot be used for Q&A.
         </div>
       ) : null}
-    </header>
+    </div>
   );
 }

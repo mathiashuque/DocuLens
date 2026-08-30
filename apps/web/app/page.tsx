@@ -1,30 +1,26 @@
 import { UploadForm } from "@/components/UploadForm";
-import { DemoCards } from "@/components/DemoCards";
 import { UsageAllowance } from "@/components/UsageAllowance";
 import { Reveal, StaggerGroup, StaggerItem } from "@/components/motion/primitives";
-import { fetchDemos } from "@/lib/demo-client";
 
-const CAPABILITIES = [
+const STEPS = [
   {
+    step: "1",
     title: "Upload",
-    description: "Drop in a PDF. Pages and section structure are preserved from the start.",
+    description: "Drop in a PDF. It's prepared for grounded questions automatically.",
   },
   {
-    title: "Ask anything",
-    description: "Ask direct questions or request analysis — risks, obligations, deadlines, comparisons, summaries.",
+    step: "2",
+    title: "Ask or analyze",
+    description: "Ask a direct question, or request analysis — risks, obligations, deadlines, comparisons, summaries.",
   },
   {
-    title: "Evidence",
-    description: "Every claim links back to the exact page and quote it came from.",
-  },
-  {
-    title: "Grounded answers",
-    description: "Every answer is grounded in this document, or reports a clear insufficient-evidence result.",
+    step: "3",
+    title: "Read the evidence",
+    description: "Every answer cites the exact page and quote it came from, or says so when it can't.",
   },
 ];
 
-export default async function HomePage() {
-  const demos = await fetchDemos();
+export default function HomePage() {
   return (
     <div className="flex flex-1 flex-col items-center px-6 py-16 sm:py-20">
       <div className="grid w-full max-w-5xl items-start gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14">
@@ -51,44 +47,50 @@ export default async function HomePage() {
       </div>
 
       <Reveal delay={0.12} className="mt-14 w-full max-w-5xl">
-        <StaggerGroup as="ul" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {CAPABILITIES.map((capability) => (
-            <StaggerItem as="li" key={capability.title}>
-              <div className="h-full rounded-card border border-hairline bg-surface p-4">
-                <p className="text-sm font-semibold text-ink">{capability.title}</p>
-                <p className="mt-1 text-xs leading-5 text-ink-muted">{capability.description}</p>
+        <StaggerGroup as="ul" className="grid gap-6 sm:grid-cols-3">
+          {STEPS.map((item) => (
+            <StaggerItem as="li" key={item.step}>
+              <div className="flex h-full flex-col gap-1.5 border-t-2 border-accent/25 pt-3">
+                <p className="text-xs font-semibold tracking-wide text-accent-strong">
+                  Step {item.step}
+                </p>
+                <p className="text-sm font-semibold text-ink">{item.title}</p>
+                <p className="text-sm leading-6 text-ink-muted">{item.description}</p>
               </div>
             </StaggerItem>
           ))}
         </StaggerGroup>
       </Reveal>
-
-      <div className="mt-14 w-full max-w-5xl">
-        <DemoCards demos={demos} />
-      </div>
     </div>
   );
 }
 
-/** Decorative evidence-card motif built from semantic HTML/CSS: never a screenshot of a real document. */
+/**
+ * Decorative conversation/evidence preview built from semantic HTML/CSS —
+ * never a screenshot of a real document, and never a fabricated confidence
+ * score, since the product doesn't expose calibrated confidence.
+ */
 function EvidenceMotif() {
   return (
-    <div aria-hidden="true" className="rounded-card border border-hairline bg-surface p-5 shadow-card">
-      <div className="flex items-center justify-between border-b border-hairline pb-3 text-xs text-ink-subtle">
-        <span>Page 12</span>
-        <span className="rounded-chip bg-accent-soft px-2 py-0.5 font-medium text-accent-strong">
-          Confidence 92%
-        </span>
+    <div aria-hidden="true" className="flex flex-col gap-3 rounded-card border border-hairline bg-surface p-5 shadow-card">
+      <div className="ml-auto max-w-[80%] rounded-card bg-accent px-3.5 py-2 text-xs text-white">
+        What happens if either party wants to end this early?
       </div>
-      <div className="mt-3 flex flex-col gap-2">
-        <div className="h-2 w-11/12 rounded-full bg-canvas-strong" />
-        <div className="h-2 w-full rounded-full bg-canvas-strong" />
-        <div className="h-2 w-4/5 rounded-full bg-canvas-strong" />
-        <div className="mt-3 rounded-md border-l-2 border-accent bg-accent-soft py-2 pl-3 text-xs leading-5 text-ink-muted italic">
-          &ldquo;&hellip;shall automatically renew for successive twelve-month
-          periods unless either party provides written notice&hellip;&rdquo;
+      <div className="flex items-start gap-2">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[9px] font-semibold text-accent-strong">
+          DL
+        </span>
+        <div className="flex flex-col gap-2">
+          <div className="h-2 w-40 rounded-full bg-canvas-strong" />
+          <div className="h-2 w-32 rounded-full bg-canvas-strong" />
+          <div className="mt-1 flex flex-col gap-1 rounded-md border-y border-r border-l-2 border-hairline border-l-accent bg-accent-soft/40 px-3 py-2">
+            <span className="text-[10px] font-medium text-ink-subtle">Page 12</span>
+            <span className="text-xs leading-5 text-ink-muted italic">
+              &ldquo;&hellip;either party may terminate with sixty days&rsquo;
+              written notice&hellip;&rdquo;
+            </span>
+          </div>
         </div>
-        <div className="mt-1 h-2 w-2/3 rounded-full bg-canvas-strong" />
       </div>
     </div>
   );

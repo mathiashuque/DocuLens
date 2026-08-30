@@ -28,10 +28,10 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
     <div className="mx-auto flex h-full min-h-0 w-full max-w-[52rem] flex-1 flex-col px-4 sm:px-6">
       <div className="shrink-0 pt-6">
         <DocumentHeader document={document} />
-        {document.demo_slug ? (
+        {document.demo_slug && !document.demo_questions ? (
           <aside className="mt-4 rounded-card border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950">
             <p className="font-semibold">Precomputed demo</p>
-            <p className="mt-1">This synthetic document and its example answers were curated in advance. Loading it does not call an AI provider.</p>
+            <p className="mt-1">This synthetic document was curated in advance. Loading it does not call an AI provider.</p>
           </aside>
         ) : null}
       </div>
