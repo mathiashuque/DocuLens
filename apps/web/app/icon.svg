@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="DocuLens">
+  <rect x="0" y="0" width="32" height="32" rx="7.04" fill="#4338ca" />
+  <g fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8.64" y="6.08" width="10.88" height="14.72" rx="1.6" />
+    <line x1="11.09" y1="10.86" x2="17.07" y2="10.86" />
+    <line x1="11.09" y1="13.81" x2="17.07" y2="13.81" />
+    <circle cx="20.48" cy="21.12" r="4.8" />
+    <line x1="23.94" y1="24.58" x2="26.24" y2="26.88" />
+  </g>
+</svg>

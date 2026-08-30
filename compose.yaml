@@ -46,6 +46,11 @@ services:
     build:
       context: apps/web
       dockerfile: Dockerfile
+      args:
+        # Baked in at build time: Next.js statically prerenders `/`,
+        # robots.txt, sitemap.xml, and the Open Graph image using this
+        # origin. See apps/web/lib/site-config.ts.
+        DOCULENS_SITE_URL: ${DOCULENS_SITE_URL:-http://localhost:${WEB_HOST_PORT:-3000}}
     ports:
       - "${WEB_HOST_PORT:-3000}:3000"
     environment:

@@ -2,29 +2,81 @@
 
 import { useState } from "react";
 
-import { EvidenceQuote } from "@/components/analysis/EvidenceQuote";
-import { Reveal } from "@/components/motion/primitives";
+import { Reveal, StaggerGroup, StaggerItem } from "@/components/motion/primitives";
+import { EvidenceGroup } from "@/components/questions/EvidenceGroup";
 import type { Document } from "@/lib/document-schema";
 
 type DemoQuestion = NonNullable<Document["demo_questions"]>[number];
 
+function AssistantMark() {
+  return (
+    <span
+      aria-hidden="true"
+      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-soft text-[10px] font-semibold text-accent-strong"
+    >
+      DL
+    </span>
+  );
+}
+
+/**
+ * Curated demo answers rendered with the same message/evidence vocabulary as
+ * live chat (compact right-aligned question, open left-aligned answer, the
+ * same `EvidenceGroup`) — a safe precomputed variation of the real
+ * experience, not a separate visual subsystem. The "Precomputed demo" notice
+ * stays a compact badge rather than a large banner competing with the chat.
+ */
 export function CuratedDemoQuestions({ questions }: { questions: DemoQuestion[] }) {
   const [selected, setSelected] = useState<DemoQuestion | null>(null);
+
   return (
-    <section aria-labelledby="demo-questions-heading" className="flex flex-col gap-4 rounded-card border border-sky-200 bg-sky-50 p-5">
-      <div>
-        <h2 id="demo-questions-heading" className="text-lg font-semibold text-ink">Precomputed questions</h2>
-        <p className="mt-1 text-sm text-ink-muted">Choose an example question. These answers are curated and do not call an AI provider.</p>
+    <section aria-label="Precomputed demo questions" className="flex flex-col gap-5 px-1 py-4">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="inline-flex items-center gap-1.5 rounded-chip bg-sky-100 px-2.5 py-1 text-xs font-medium text-sky-900">
+          <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-sky-500" />
+          Precomputed demo
+        </span>
+        <p className="text-xs text-ink-subtle">Curated in advance — selecting a question below never calls an AI provider.</p>
       </div>
-      <div className="flex flex-wrap gap-2">
-        {questions.map((item) => <button key={item.id} type="button" onClick={() => setSelected(item)} className="rounded-md border border-sky-300 bg-white px-3 py-2 text-left text-sm font-medium text-ink-muted transition-colors hover:border-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]">{item.question}</button>)}
-      </div>
+
+      <StaggerGroup as="ul" className="flex flex-wrap gap-2" aria-label="Example demo questions">
+        {questions.map((item) => (
+          <StaggerItem as="li" key={item.id} className="list-none">
+            <button
+              type="button"
+              onClick={() => setSelected(item)}
+              aria-pressed={selected?.id === item.id}
+              className="rounded-chip border border-hairline bg-surface px-3.5 py-2 text-left text-sm text-ink-muted transition-colors hover:border-accent/40 hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]"
+            >
+              {item.question}
+            </button>
+          </StaggerItem>
+        ))}
+      </StaggerGroup>
+
       {selected ? (
         <Reveal>
-          <div className="rounded-card border border-zinc-200 bg-white p-4 shadow-sm" role="status">
-            <h3 className="font-semibold text-ink">{selected.status === "answered" ? "Answer" : "Insufficient evidence"}</h3>
-            <p className="mt-2 whitespace-pre-wrap break-words text-sm text-ink-muted">{selected.answer}</p>
-            {selected.citations.length ? <ol aria-label="Answer citations" className="mt-3 flex flex-col gap-3">{selected.citations.map((citation, index) => <li key={citation.chunk_id}><p className="text-sm font-medium text-ink-muted">Citation {index + 1}: Page {citation.page}</p><EvidenceQuote page={citation.page} quote={citation.evidence} /></li>)}</ol> : null}
+          <div className="flex flex-col gap-3">
+            <div className="ml-auto max-w-[85%] rounded-card bg-accent px-4 py-2.5 text-sm break-words whitespace-pre-wrap text-white">
+              <span className="sr-only">Example question: </span>
+              {selected.question}
+            </div>
+            <div className="flex items-start gap-2.5" role="status">
+              <AssistantMark />
+              <div className="min-w-0 flex-1">
+                {selected.status === "insufficient_evidence" ? (
+                  <div className="rounded-card border border-amber-300 bg-amber-50 px-4 py-3">
+                    <p className="text-sm font-semibold text-amber-950">Insufficient evidence</p>
+                    <p className="mt-1 text-sm break-words whitespace-pre-wrap text-amber-900">{selected.answer}</p>
+                  </div>
+                ) : (
+                  <div className="max-w-full">
+                    <p className="text-[0.95rem] leading-7 break-words whitespace-pre-wrap text-ink">{selected.answer}</p>
+                    <EvidenceGroup citations={selected.citations} />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </Reveal>
       ) : null}

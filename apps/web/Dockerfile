@@ -12,6 +12,15 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
+
+# `next build` statically prerenders `/`, robots.txt, sitemap.xml, and the
+# Open Graph image, which all resolve absolute URLs from DOCULENS_SITE_URL at
+# build time (see lib/site-config.ts) — so the public origin must be known
+# here, not just at container runtime. Defaults to the local Compose origin;
+# real deployments must override with --build-arg DOCULENS_SITE_URL=<origin>.
+ARG DOCULENS_SITE_URL=http://localhost:3000
+ENV DOCULENS_SITE_URL=${DOCULENS_SITE_URL}
+
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime

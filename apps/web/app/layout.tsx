@@ -1,19 +1,47 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+
+import { getSiteUrl } from "@/lib/site-config";
 
 import "./globals.css";
 
+const description =
+  "Upload a PDF, then ask it questions or request analysis. DocuLens grounds every answer in the exact page and quote it came from, and says so when the document doesn't have the answer.";
+
 export const metadata: Metadata = {
-  title: "DocuLens",
-  description:
-    "DocuLens turns complex documents into structured, evidence-backed analysis.",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    template: "%s | DocuLens",
+    default: "DocuLens — Ask your documents, with evidence",
+  },
+  description,
+  applicationName: "DocuLens",
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "DocuLens",
+    title: "DocuLens — Ask your documents, with evidence",
+    description,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DocuLens — Ask your documents, with evidence",
+    description,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4338ca",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-canvas font-sans text-ink">
-        <header className="sticky top-0 z-10 border-b border-hairline bg-surface/90 backdrop-blur-sm">
+      <body className="flex h-dvh flex-col overflow-hidden bg-canvas font-sans text-ink">
+        <header className="shrink-0 border-b border-hairline bg-surface/90 backdrop-blur-sm">
           <div className="mx-auto flex w-full max-w-5xl items-center px-6 py-3">
             <Link
               href="/"
@@ -35,7 +63,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
           </div>
         </header>
-        {children}
+        <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">{children}</main>
       </body>
     </html>
   );

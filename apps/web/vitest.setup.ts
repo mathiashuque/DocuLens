@@ -21,6 +21,13 @@ if (typeof window !== "undefined" && !window.matchMedia) {
     }) as MediaQueryList;
 }
 
+// jsdom does not implement scrollIntoView (no real layout engine). The chat
+// transcript calls it to keep new turns in view; stub it as a no-op so that
+// code path is exercised without throwing in tests.
+if (typeof window !== "undefined" && !window.HTMLElement.prototype.scrollIntoView) {
+  window.HTMLElement.prototype.scrollIntoView = () => {};
+}
+
 afterEach(() => {
   cleanup();
 });

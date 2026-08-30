@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.api.analysis import router as analysis_router
 from app.api.classification import router as classification_router
 from app.api.demos import router as demos_router
 from app.api.documents import router as documents_router
@@ -57,7 +56,6 @@ app.include_router(health_router)
 app.include_router(documents_router)
 app.include_router(demos_router)
 app.include_router(classification_router)
-app.include_router(analysis_router)
 app.include_router(retrieval_router)
 app.include_router(questions_router)
 app.include_router(usage_router)
