@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: doculens-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    envVars:
+      # Supply the Neon connection string in the Render dashboard. Standard
+      # postgresql:// URLs with sslmode=require are normalized by the app.
+      - key: DATABASE_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PUBLIC_DEMO_MODE
+        value: "true"
+      # Use the same 32-byte-or-longer value in the Vercel frontend.
+      - key: ANONYMOUS_SESSION_SECRET
+        sync: false
+      - key: MAX_UPLOAD_MB
+        value: "10"
+      - key: MAX_DOCUMENT_PAGES
+        value: "40"
+      - key: MAX_ANALYSES_PER_DAY
+        value: "3"
+      - key: MAX_INDEXES_PER_DAY
+        value: "3"
+      - key: MAX_QUESTIONS_PER_DOCUMENT
+        value: "10"
+      - key: ANONYMOUS_SESSION_MAX_AGE_SECONDS
+        value: "2592000"
