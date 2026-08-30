@@ -95,6 +95,10 @@ jobs:
       - name: Build
         if: steps.frontend.outputs.available == 'true'
         run: ${{ steps.frontend.outputs.manager }} run build
+        env:
+          # Production builds intentionally require an absolute public origin.
+          # Use a reserved domain in CI; deployments provide their real origin.
+          DOCULENS_SITE_URL: https://doculens.example.com
 
   backend:
     name: Backend
