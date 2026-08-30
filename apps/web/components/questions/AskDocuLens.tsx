@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { EvidenceQuote } from "@/components/analysis/EvidenceQuote";
-import { Reveal, StaggerGroup, StaggerItem } from "@/components/motion/primitives";
+import { Reveal, useReducedMotionSafe } from "@/components/motion/primitives";
+import { ChatMessage } from "@/components/questions/ChatMessage";
+import { Composer } from "@/components/questions/Composer";
+import { ExamplePrompts } from "@/components/questions/ExamplePrompts";
+import type { Turn } from "@/components/questions/types";
 import {
   askDocumentQuestion,
   prepareQuestionAnswering,
   type QuestionFailureKind,
 } from "@/lib/question-actions";
-import { MAX_QUESTION_LENGTH, type QuestionResponse } from "@/lib/question-schema";
+import { MAX_QUESTION_LENGTH } from "@/lib/question-schema";
 import type { DocumentStatus } from "@/lib/document-schema";
 
 type PreparationState =
@@ -17,69 +20,10 @@ type PreparationState =
   | { status: "ready" }
   | { status: "error"; kind: QuestionFailureKind; message: string };
 
-type Turn = {
-  id: string;
-  question: string;
-} & (
-  | { status: "pending" }
-  | { status: "answered" | "insufficient_evidence"; result: QuestionResponse }
-  | { status: "error"; message: string }
-);
+const NEAR_BOTTOM_THRESHOLD_PX = 96;
 
 function canRetryPreparation(kind: QuestionFailureKind) {
   return kind !== "ineligible_document" && kind !== "incompatible_index" && kind !== "not_found";
-}
-
-function AnswerTurn({ turn }: { turn: Turn }) {
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="ml-auto max-w-[85%] rounded-card bg-accent px-4 py-2.5 text-sm text-white">
-        <span className="sr-only">You asked: </span>
-        {turn.question}
-      </div>
-
-      {turn.status === "pending" ? (
-        <div className="mr-auto max-w-[85%] rounded-card border border-zinc-200 bg-zinc-50 px-4 py-2.5 text-sm text-ink-muted" role="status">
-          <span className="sr-only">DocuLens is answering.</span>
-          Thinking…
-        </div>
-      ) : null}
-
-      {turn.status === "error" ? (
-        <Reveal>
-          <p role="alert" className="mr-auto max-w-[85%] rounded-card border border-red-300 bg-red-50 px-4 py-2.5 text-sm font-medium text-red-800">
-            {turn.message}
-          </p>
-        </Reveal>
-      ) : null}
-
-      {turn.status === "insufficient_evidence" ? (
-        <Reveal>
-          <div className="mr-auto max-w-[85%] rounded-card border border-amber-300 bg-amber-50 p-4" role="status">
-            <h3 className="font-semibold text-amber-950">Insufficient evidence</h3>
-            <p className="mt-1 whitespace-pre-wrap break-words text-sm text-amber-900">{turn.result.answer}</p>
-            <p className="mt-2 text-sm text-amber-900">Try rephrasing your question using terms from the document.</p>
-          </div>
-        </Reveal>
-      ) : null}
-
-      {turn.status === "answered" ? (
-        <Reveal>
-          <div className="mr-auto flex max-w-[85%] flex-col gap-4 rounded-card border border-zinc-200 bg-zinc-50 p-4">
-            <p className="whitespace-pre-wrap break-words text-sm text-ink-muted">{turn.result.answer}</p>
-            <ol className="flex flex-col gap-3" aria-label="Answer citations">
-              {turn.result.citations.map((citation, index) => (
-                <li key={citation.chunk_id}>
-                  <p className="text-xs font-medium text-ink-subtle">Citation {index + 1}</p>
-                  <EvidenceQuote page={citation.page} quote={citation.evidence} />
-                </li>
-              ))}
-            </ol>
-          </div>
-        </Reveal>
-      ) : null}
-    </div>
-  );
 }
 
 /**
@@ -104,9 +48,13 @@ export function AskDocuLens({
   const [question, setQuestion] = useState("");
   const [turns, setTurns] = useState<Turn[]>([]);
   const [questionError, setQuestionError] = useState<string | null>(null);
-  const questionId = useId();
-  const questionErrorId = useId();
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
   const preparingRef = useRef(false);
+  const isNearBottomRef = useRef(true);
+  const transcriptRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const nextTurnIdRef = useRef(0);
+  const reduceMotion = useReducedMotionSafe();
   const answering = turns.some((turn) => turn.status === "pending");
 
   async function prepare() {
@@ -123,19 +71,45 @@ export function AskDocuLens({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [documentId, eligible]);
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  useEffect(() => {
+    if (!turns.length) return;
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
+      setShowJumpToLatest(false);
+    } else {
+      setShowJumpToLatest(true);
+    }
+  }, [turns.length, reduceMotion]);
+
+  function handleTranscriptScroll() {
+    const el = transcriptRef.current;
+    if (!el) return;
+    const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < NEAR_BOTTOM_THRESHOLD_PX;
+    isNearBottomRef.current = nearBottom;
+    if (nearBottom) setShowJumpToLatest(false);
+  }
+
+  function jumpToLatest() {
+    isNearBottomRef.current = true;
+    setShowJumpToLatest(false);
+    bottomRef.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
+  }
+
+  function submit() {
     const trimmed = question.trim();
-    if (answering) return;
-    if (!trimmed) {
-      setQuestionError("Enter a question before asking DocuLens.");
+    if (answering || !trimmed) {
+      if (!trimmed) setQuestionError("Enter a question before asking DocuLens.");
       return;
     }
     setQuestionError(null);
-    const turnId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    nextTurnIdRef.current += 1;
+    const turnId = `turn-${nextTurnIdRef.current}`;
     setTurns((prev) => [...prev, { id: turnId, question: trimmed, status: "pending" }]);
     setQuestion("");
+    void resolveTurn(turnId, trimmed);
+  }
 
+  async function resolveTurn(turnId: string, trimmed: string) {
     const result = await askDocumentQuestion(documentId, trimmed);
 
     if (result.ok) {
@@ -165,26 +139,15 @@ export function AskDocuLens({
   if (!eligible) return null;
 
   return (
-    <section aria-labelledby="ask-doculens-heading" className="flex flex-col gap-4 rounded-card border border-zinc-200 bg-white p-5 shadow-sm">
-      <div>
-        <h2 id="ask-doculens-heading" className="text-lg font-semibold text-ink">Ask DocuLens</h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          Ask a question or request analysis of this document — for example
-          &ldquo;what is the termination deadline?&rdquo;, &ldquo;analyze the main
-          risks&rdquo;, or &ldquo;summarize the obligations in section 3&rdquo;. Each
-          answer is grounded in this document with page evidence, or reports that the
-          document does not contain enough evidence to answer.
-        </p>
-      </div>
-
+    <section aria-label="Ask DocuLens" className="flex min-h-0 flex-1 flex-col">
       {preparation.status !== "ready" ? (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
           {preparation.status === "preparing" ? (
-            <p role="status" className="text-sm text-ink-muted">Preparing this document for Q&A…</p>
+            <p role="status" className="text-sm text-ink-muted">Preparing this document for Q&amp;A…</p>
           ) : null}
           {preparation.status === "error" ? (
             <Reveal>
-              <div className="flex flex-col gap-3">
+              <div className="flex flex-col items-center gap-3">
                 <p role="alert" className="text-sm font-medium text-red-700">{preparation.message}</p>
                 {canRetryPreparation(preparation.kind) ? (
                   <button
@@ -201,26 +164,58 @@ export function AskDocuLens({
         </div>
       ) : (
         <>
-          {turns.length ? (
-            <StaggerGroup as="ul" className="flex flex-col gap-4" aria-label="Question and answer history">
-              {turns.map((turn) => (
-                <StaggerItem as="li" key={turn.id} className="list-none">
-                  <AnswerTurn turn={turn} />
-                </StaggerItem>
-              ))}
-            </StaggerGroup>
+          <div
+            ref={transcriptRef}
+            onScroll={handleTranscriptScroll}
+            role="log"
+            aria-label="Conversation with DocuLens"
+            className="relative flex-1 min-h-0 overflow-y-auto"
+          >
+            {turns.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center gap-6 px-4 py-10 text-center">
+                <div>
+                  <h2 className="text-xl font-semibold text-ink">What would you like to know?</h2>
+                  <p className="mt-1.5 text-sm text-ink-muted">
+                    Answers are grounded in this document, with page evidence or an
+                    honest insufficient-evidence result.
+                  </p>
+                </div>
+                <ExamplePrompts onSelect={setQuestion} />
+              </div>
+            ) : (
+              <ol className="flex flex-col gap-6 px-1 py-4">
+                {turns.map((turn) => (
+                  <li key={turn.id}>
+                    <ChatMessage turn={turn} />
+                  </li>
+                ))}
+              </ol>
+            )}
+            <div ref={bottomRef} />
+          </div>
+
+          {showJumpToLatest ? (
+            <div className="flex justify-center pb-2">
+              <button
+                type="button"
+                onClick={jumpToLatest}
+                className="rounded-chip border border-hairline bg-surface px-3 py-1.5 text-xs font-medium text-ink-muted shadow-card hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
+              >
+                Jump to latest ↓
+              </button>
+            </div>
           ) : null}
 
-          <form onSubmit={submit} aria-busy={answering} className="flex flex-col gap-3">
-            <label htmlFor={questionId} className="text-sm font-medium text-ink-muted">Your question</label>
-            <textarea id={questionId} value={question} onChange={(event) => setQuestion(event.target.value)} maxLength={MAX_QUESTION_LENGTH} rows={3} placeholder="e.g. Analyze the termination risks and cite each conclusion." aria-describedby={questionError ? questionErrorId : undefined} className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" />
-            <p className="text-xs text-ink-subtle">{question.length}/{MAX_QUESTION_LENGTH} characters</p>
-            {questionError ? <Reveal><p id={questionErrorId} role="alert" className="text-sm font-medium text-red-700">{questionError}</p></Reveal> : null}
-            <button type="submit" disabled={answering || !question.trim()} className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]">
-              {answering ? "Asking DocuLens…" : "Ask DocuLens"}
-            </button>
-            <p aria-live="polite" className="sr-only">{answering ? "Asking DocuLens. Prior turns remain visible while a new answer is prepared." : ""}</p>
-          </form>
+          <div className="shrink-0 pt-2">
+            <Composer
+              value={question}
+              onChange={setQuestion}
+              onSubmit={submit}
+              disabled={answering}
+              maxLength={MAX_QUESTION_LENGTH}
+              error={questionError}
+            />
+          </div>
         </>
       )}
     </section>

@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="flex min-h-full flex-col bg-canvas font-sans text-ink">
-        <header className="sticky top-0 z-10 border-b border-hairline bg-surface/90 backdrop-blur-sm">
+      <body className="flex h-dvh flex-col overflow-hidden bg-canvas font-sans text-ink">
+        <header className="shrink-0 border-b border-hairline bg-surface/90 backdrop-blur-sm">
           <div className="mx-auto flex w-full max-w-5xl items-center px-6 py-3">
             <Link
               href="/"
@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             </Link>
           </div>
         </header>
-        {children}
+        <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">{children}</main>
       </body>
     </html>
   );

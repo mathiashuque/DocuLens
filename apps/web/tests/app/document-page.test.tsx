@@ -54,7 +54,7 @@ describe("DocumentPage", () => {
     render(jsx);
 
     expect(screen.getByRole("heading", { name: "contract.pdf" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Ask DocuLens" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Ask DocuLens" })).toBeInTheDocument();
   });
 
   it("never renders document structure, raw page text, or page counts", async () => {
@@ -100,7 +100,7 @@ describe("DocumentPage", () => {
     });
     render(jsx);
 
-    expect(screen.getByRole("heading", { name: "Ask DocuLens" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Ask DocuLens" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Analyze document" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Prepare Q&A" })).not.toBeInTheDocument();
   });
@@ -113,7 +113,7 @@ describe("DocumentPage", () => {
     });
     render(jsx);
 
-    expect(screen.queryByRole("heading", { name: "Ask DocuLens" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Ask DocuLens" })).not.toBeInTheDocument();
     expect(screen.getByRole("alert")).toHaveTextContent("No usable text");
   });
 

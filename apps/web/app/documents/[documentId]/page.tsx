@@ -25,18 +25,22 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 px-6 py-10">
-      <DocumentHeader document={document} />
-      {document.demo_slug ? (
-        <aside className="rounded-card border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950">
-          <p className="font-semibold">Precomputed demo</p>
-          <p className="mt-1">This synthetic document and its example answers were curated in advance. Loading it does not call an AI provider.</p>
-        </aside>
-      ) : null}
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-[52rem] flex-1 flex-col px-4 sm:px-6">
+      <div className="shrink-0 pt-6">
+        <DocumentHeader document={document} />
+        {document.demo_slug ? (
+          <aside className="mt-4 rounded-card border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950">
+            <p className="font-semibold">Precomputed demo</p>
+            <p className="mt-1">This synthetic document and its example answers were curated in advance. Loading it does not call an AI provider.</p>
+          </aside>
+        ) : null}
+      </div>
       {document.demo_questions ? (
-        <CuratedDemoQuestions questions={document.demo_questions} />
+        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+          <CuratedDemoQuestions questions={document.demo_questions} />
+        </div>
       ) : (
-        <div>
+        <div className="flex min-h-0 flex-1 flex-col pb-4">
           <AskDocuLens
             documentId={document.id}
             documentStatus={document.status}

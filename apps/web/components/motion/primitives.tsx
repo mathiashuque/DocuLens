@@ -18,6 +18,12 @@ const REVEAL_DISTANCE = 12;
 const REVEAL_DURATION = 0.32;
 const STAGGER_STEP = 0.06;
 
+/** `useReducedMotion` narrowed to a plain boolean for callers that only need
+ * to branch on it (e.g. choosing `"auto"` vs `"smooth"` scroll behavior). */
+export function useReducedMotionSafe(): boolean {
+  return useReducedMotion() ?? false;
+}
+
 export function Reveal({
   children,
   delay = 0,
@@ -52,10 +58,12 @@ export function StaggerGroup({
   children,
   className,
   as = "div",
+  "aria-label": ariaLabel,
 }: {
   children: ReactNode;
   className?: string;
   as?: "div" | "ul";
+  "aria-label"?: string;
 }) {
   const reduceMotion = useReducedMotion();
   const Container = as === "ul" ? motion.ul : motion.div;
@@ -63,6 +71,7 @@ export function StaggerGroup({
   return (
     <Container
       className={className}
+      aria-label={ariaLabel}
       initial="hidden"
       animate="visible"
       variants={
