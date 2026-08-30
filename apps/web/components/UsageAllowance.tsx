@@ -2,18 +2,16 @@
 
 import { useEffect, useState } from "react";
 
+import type { Dictionary } from "@/lib/i18n/dictionary";
+import { interpolate } from "@/lib/i18n/interpolate";
+import { FORMATTING_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { usageResponseSchema, type UsageResponse } from "@/lib/usage-schema";
 
-const CATEGORY_LABEL: Record<UsageResponse["allowances"][number]["category"], string> = {
-  index: "document uploads",
-  question: "questions",
-  analysis: "analyses",
-};
-
-function formatResetTime(retryAt: string | null): string | null {
+function formatResetTime(retryAt: string | null, locale: Locale): string | null {
   if (!retryAt) return null;
   const reset = new Date(retryAt);
-  return Number.isNaN(reset.getTime()) ? null : reset.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (Number.isNaN(reset.getTime())) return null;
+  return new Intl.DateTimeFormat(FORMATTING_LOCALE[locale], { hour: "numeric", minute: "2-digit" }).format(reset);
 }
 
 /**
@@ -22,7 +20,15 @@ function formatResetTime(retryAt: string | null): string | null {
  * nothing to show) so its async arrival never shifts the composer or CTA
  * sitting next to it.
  */
-export function UsageAllowance({ documentId }: { documentId?: string }) {
+export function UsageAllowance({
+  dict,
+  lang,
+  documentId,
+}: {
+  dict: Dictionary["usage"];
+  lang: Locale;
+  documentId?: string;
+}) {
   const [usage, setUsage] = useState<UsageResponse | null>(null);
   const [loaded, setLoaded] = useState(false);
 
@@ -48,12 +54,14 @@ export function UsageAllowance({ documentId }: { documentId?: string }) {
   return (
     <p className="min-h-4 text-xs text-ink-subtle" aria-live="polite">
       {visible.map((item) => {
-        const label = CATEGORY_LABEL[item.category];
+        const label = dict.categoryLabel[item.category];
         if (item.remaining <= 0) {
-          const resetTime = formatResetTime(item.retry_at);
-          return `You've used today's free ${label}${resetTime ? ` — more available at ${resetTime}` : ""}.`;
+          const resetTime = formatResetTime(item.retry_at, lang);
+          return resetTime
+            ? interpolate(dict.usedUpToday, { label, resetTime })
+            : interpolate(dict.usedUpTodayNoReset, { label });
         }
-        return `${item.remaining} of ${item.limit} free ${label} left today`;
+        return interpolate(dict.remaining, { remaining: item.remaining, limit: item.limit, label });
       }).join(" · ")}
     </p>
   );

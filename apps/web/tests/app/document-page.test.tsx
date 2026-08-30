@@ -22,7 +22,7 @@ vi.mock("next/navigation", () => ({
   notFound: notFoundMock,
 }));
 
-import DocumentPage from "@/app/documents/[documentId]/page";
+import DocumentPage from "@/app/[lang]/documents/[documentId]/page";
 import { BackendError } from "@/lib/errors";
 
 function validDocument(overrides: Record<string, unknown> = {}) {
@@ -49,7 +49,7 @@ describe("DocumentPage", () => {
     fetchDocumentMock.mockResolvedValueOnce(validDocument());
 
     const jsx = await DocumentPage({
-      params: Promise.resolve({ documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
+      params: Promise.resolve({ lang: "en", documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
     });
     render(jsx);
 
@@ -61,7 +61,7 @@ describe("DocumentPage", () => {
     fetchDocumentMock.mockResolvedValueOnce(validDocument());
 
     const jsx = await DocumentPage({
-      params: Promise.resolve({ documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
+      params: Promise.resolve({ lang: "en", documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
     });
     render(jsx);
 
@@ -77,7 +77,7 @@ describe("DocumentPage", () => {
     );
 
     await expect(
-      DocumentPage({ params: Promise.resolve({ documentId: "missing" }) })
+      DocumentPage({ params: Promise.resolve({ lang: "en", documentId: "missing" }) })
     ).rejects.toBeInstanceOf(NotFoundSignal);
     expect(notFoundMock).toHaveBeenCalled();
   });
@@ -88,7 +88,7 @@ describe("DocumentPage", () => {
     );
 
     await expect(
-      DocumentPage({ params: Promise.resolve({ documentId: "id" }) })
+      DocumentPage({ params: Promise.resolve({ lang: "en", documentId: "id" }) })
     ).rejects.toBeInstanceOf(BackendError);
   });
 
@@ -96,7 +96,7 @@ describe("DocumentPage", () => {
     fetchDocumentMock.mockResolvedValueOnce(validDocument());
 
     const jsx = await DocumentPage({
-      params: Promise.resolve({ documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
+      params: Promise.resolve({ lang: "en", documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
     });
     render(jsx);
 
@@ -109,7 +109,7 @@ describe("DocumentPage", () => {
     fetchDocumentMock.mockResolvedValueOnce(validDocument({ status: "ocr_required" }));
 
     const jsx = await DocumentPage({
-      params: Promise.resolve({ documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
+      params: Promise.resolve({ lang: "en", documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }),
     });
     render(jsx);
 
@@ -122,7 +122,7 @@ describe("DocumentPage", () => {
       demo_slug: "sample-generic-report",
       demo_questions: [{ id: "missing", question: "What is missing?", status: "insufficient_evidence", answer: "Not provided.", citations: [] }],
     }));
-    const jsx = await DocumentPage({ params: Promise.resolve({ documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }) });
+    const jsx = await DocumentPage({ params: Promise.resolve({ lang: "en", documentId: "5c68e652-ab9d-442d-a5b3-d24b015155ad" }) });
     render(jsx);
     expect(screen.getByText("Precomputed demo")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "What is missing?" })).toBeInTheDocument();

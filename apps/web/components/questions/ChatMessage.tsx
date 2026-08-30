@@ -2,6 +2,7 @@ import { Reveal } from "@/components/motion/primitives";
 import { EvidenceGroup } from "@/components/questions/EvidenceGroup";
 import { ThinkingIndicator } from "@/components/questions/ThinkingIndicator";
 import type { Turn } from "@/components/questions/types";
+import type { Dictionary } from "@/lib/i18n/dictionary";
 
 /** Small, code-native identity mark for an assistant message — no remote avatar. */
 function AssistantMark() {
@@ -15,11 +16,11 @@ function AssistantMark() {
   );
 }
 
-function UserBubble({ question }: { question: string }) {
+function UserBubble({ question, youAskedSr }: { question: string; youAskedSr: string }) {
   return (
     <div className="flex justify-end">
       <p className="max-w-[85%] min-w-0 rounded-card bg-accent px-4 py-2.5 text-sm break-words whitespace-pre-wrap text-white">
-        <span className="sr-only">You asked: </span>
+        <span className="sr-only">{youAskedSr}</span>
         {question}
       </p>
     </div>
@@ -35,14 +36,14 @@ function AssistantRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function ChatMessage({ turn }: { turn: Turn }) {
+export function ChatMessage({ turn, dict }: { turn: Turn; dict: Dictionary["questions"] }) {
   return (
     <div className="flex flex-col gap-3">
-      <UserBubble question={turn.question} />
+      <UserBubble question={turn.question} youAskedSr={dict.youAskedSr} />
 
       {turn.status === "pending" ? (
         <AssistantRow>
-          <ThinkingIndicator />
+          <ThinkingIndicator dict={dict} />
         </AssistantRow>
       ) : null}
 
@@ -60,9 +61,9 @@ export function ChatMessage({ turn }: { turn: Turn }) {
         <Reveal>
           <AssistantRow>
             <div className="rounded-card border border-amber-300 bg-amber-50 px-4 py-3" role="status">
-              <p className="text-sm font-semibold text-amber-950">Insufficient evidence</p>
+              <p className="text-sm font-semibold text-amber-950">{dict.insufficientEvidenceTitle}</p>
               <p className="mt-1 text-sm break-words whitespace-pre-wrap text-amber-900">{turn.result.answer}</p>
-              <p className="mt-2 text-sm text-amber-900">Try rephrasing your question using terms from the document.</p>
+              <p className="mt-2 text-sm text-amber-900">{dict.insufficientEvidenceHint}</p>
             </div>
           </AssistantRow>
         </Reveal>
@@ -73,7 +74,7 @@ export function ChatMessage({ turn }: { turn: Turn }) {
           <AssistantRow>
             <div className="max-w-full">
               <p className="text-[0.95rem] leading-7 break-words whitespace-pre-wrap text-ink">{turn.result.answer}</p>
-              <EvidenceGroup citations={turn.result.citations} />
+              <EvidenceGroup citations={turn.result.citations} dict={dict} />
             </div>
           </AssistantRow>
         </Reveal>

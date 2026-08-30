@@ -3,6 +3,13 @@ import type { MetadataRoute } from "next";
 // Browser-behavior-preserving manifest: no shortcuts, share target, file
 // handler, or screenshots, since none of those are implemented or tested.
 // `display: "browser"` makes no installed-app claim beyond what's verified.
+//
+// The Web App Manifest spec has no `lang`-negotiated-content mechanism (name
+// and description are single fixed strings), and `start_url: "/"` already
+// round-trips through `proxy.ts` to the visitor's correct locale. Splitting
+// this into per-locale manifests would need a locale-aware manifest link
+// element the App Router doesn't generate, so this stays one brand-neutral,
+// English manifest by deliberate choice rather than an oversight.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "DocuLens",

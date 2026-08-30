@@ -9,6 +9,7 @@ vi.mock("next/navigation", () => ({
 }));
 
 import { UploadForm } from "@/components/UploadForm";
+import en from "@/lib/i18n/dictionaries/en";
 
 const DOCUMENT_ID = "5c68e652-ab9d-442d-a5b3-d24b015155ad";
 
@@ -56,14 +57,14 @@ describe("UploadForm", () => {
   });
 
   it("disables submission until a file is selected", () => {
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     expect(screen.getByRole("button", { name: "Upload document" })).toBeDisabled();
   });
 
   it("shows the selected filename and a human-readable size", async () => {
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await user.upload(screen.getByLabelText("PDF document"), pdfFile("report.pdf", 2048));
 
@@ -74,7 +75,7 @@ describe("UploadForm", () => {
 
   it("lets the user change the selected file via the Change action", async () => {
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await user.upload(screen.getByLabelText("PDF document"), pdfFile("first.pdf"));
     expect(screen.getByText("first.pdf")).toBeInTheDocument();
@@ -88,7 +89,7 @@ describe("UploadForm", () => {
 
   it("lets the user remove the selected file and returns to the dropzone", async () => {
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await user.upload(screen.getByLabelText("PDF document"), pdfFile("report.pdf"));
     await user.click(screen.getByRole("button", { name: "Remove" }));
@@ -99,7 +100,7 @@ describe("UploadForm", () => {
   });
 
   it("accepts a valid PDF dropped onto the dropzone", async () => {
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
     const dropzone = screen.getByText(/Drop a PDF here/).closest("label");
     expect(dropzone).not.toBeNull();
 
@@ -111,7 +112,7 @@ describe("UploadForm", () => {
   it("rejects a non-PDF file dropped onto the dropzone without a network call", async () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
     const dropzone = screen.getByText(/Drop a PDF here/).closest("label");
 
     const textFile = new File(["hello"], "notes.txt", { type: "text/plain" });
@@ -128,7 +129,7 @@ describe("UploadForm", () => {
     // the picker even when `accept` doesn't match, so disable user-event's
     // accept emulation to exercise that path.
     const user = userEvent.setup({ applyAccept: false });
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     const textFile = new File(["hello"], "notes.txt", { type: "text/plain" });
     await user.upload(screen.getByLabelText("PDF document"), textFile);
@@ -142,7 +143,7 @@ describe("UploadForm", () => {
     const fetchMock = vi.fn();
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await user.upload(screen.getByLabelText("PDF document"), pdfFile("big.pdf", 11 * 1024 * 1024));
 
@@ -159,7 +160,7 @@ describe("UploadForm", () => {
       .mockReturnValueOnce(new Promise<Response>((resolve) => { resolveIndex = resolve; }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await uploadAndSubmit(user);
     expect(screen.getByRole("button", { name: "Uploading…" })).toBeDisabled();
@@ -170,7 +171,7 @@ describe("UploadForm", () => {
 
     resolveIndex(jsonResponse(201, indexCompletedBody()));
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith(`/documents/${DOCUMENT_ID}`);
+      expect(pushMock).toHaveBeenCalledWith(`/en/documents/${DOCUMENT_ID}`);
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
@@ -178,7 +179,7 @@ describe("UploadForm", () => {
   it("shows a message and restores controls on a 413 response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(413, {})));
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     const file = pdfFile();
     await uploadAndSubmit(user, file);
@@ -193,7 +194,7 @@ describe("UploadForm", () => {
   it("shows a message on a 415 response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(415, {})));
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await uploadAndSubmit(user);
 
@@ -208,7 +209,7 @@ describe("UploadForm", () => {
       vi.fn().mockResolvedValue(jsonResponse(422, { message: "Encrypted PDFs are not supported." }))
     );
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await uploadAndSubmit(user);
 
@@ -222,7 +223,7 @@ describe("UploadForm", () => {
   it("shows a generic message on network failure and does not navigate", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network down")));
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await uploadAndSubmit(user);
 
@@ -238,7 +239,7 @@ describe("UploadForm", () => {
       vi.fn().mockResolvedValue(new Response("not json", { status: 201 }))
     );
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await uploadAndSubmit(user);
 
@@ -259,7 +260,7 @@ describe("UploadForm", () => {
       .mockReturnValueOnce(new Promise<Response>(() => {}));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await user.upload(screen.getByLabelText("PDF document"), pdfFile());
     const button = screen.getByRole("button", { name: "Upload document" });
@@ -281,7 +282,7 @@ describe("UploadForm", () => {
       .mockResolvedValueOnce(jsonResponse(201, indexCompletedBody()));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<UploadForm />);
+    render(<UploadForm dict={en} lang="en" />);
 
     await uploadAndSubmit(user);
     await screen.findByRole("alert");
@@ -289,7 +290,7 @@ describe("UploadForm", () => {
 
     await user.click(screen.getByRole("button", { name: "Retry preparation" }));
     await waitFor(() => {
-      expect(pushMock).toHaveBeenCalledWith(`/documents/${DOCUMENT_ID}`);
+      expect(pushMock).toHaveBeenCalledWith(`/en/documents/${DOCUMENT_ID}`);
     });
     // one upload call plus two index calls; never a second upload
     expect(fetchMock).toHaveBeenCalledTimes(3);

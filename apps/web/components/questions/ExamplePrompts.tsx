@@ -1,21 +1,21 @@
 import { StaggerGroup, StaggerItem } from "@/components/motion/primitives";
-
-const EXAMPLES = [
-  "Summarize this document",
-  "Identify the main risks",
-  "List important deadlines",
-  "What should I pay attention to?",
-] as const;
+import type { Dictionary } from "@/lib/i18n/dictionary";
 
 /**
  * Empty-state example prompts. Clicking one only populates and focuses the
  * composer — it never submits a paid question on its own, so no click here
  * spends allowance without an explicit, separate send action.
  */
-export function ExamplePrompts({ onSelect }: { onSelect: (prompt: string) => void }) {
+export function ExamplePrompts({
+  onSelect,
+  dict,
+}: {
+  onSelect: (prompt: string) => void;
+  dict: Dictionary["questions"];
+}) {
   return (
-    <StaggerGroup as="ul" className="flex flex-wrap justify-center gap-2" aria-label="Example prompts">
-      {EXAMPLES.map((prompt) => (
+    <StaggerGroup as="ul" className="flex flex-wrap justify-center gap-2" aria-label={dict.examplePromptsAriaLabel}>
+      {dict.examples.map((prompt) => (
         <StaggerItem as="li" key={prompt} className="list-none">
           <button
             type="button"

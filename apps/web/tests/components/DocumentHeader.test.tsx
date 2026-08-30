@@ -2,6 +2,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { DocumentHeader } from "@/components/DocumentHeader";
+import en from "@/lib/i18n/dictionaries/en";
 import type { Document } from "@/lib/document-schema";
 
 function baseDocument(overrides: Partial<Document> = {}): Document {
@@ -20,33 +21,33 @@ function baseDocument(overrides: Partial<Document> = {}): Document {
 
 describe("DocumentHeader", () => {
   it("renders the filename and status", () => {
-    render(<DocumentHeader document={baseDocument()} />);
+    render(<DocumentHeader document={baseDocument()} dict={en} />);
 
     expect(screen.getByRole("heading", { name: "contract.pdf" })).toBeInTheDocument();
     expect(screen.getByText("Parsed")).toBeInTheDocument();
   });
 
   it("does not duplicate the global brand's back-to-upload link", () => {
-    render(<DocumentHeader document={baseDocument()} />);
+    render(<DocumentHeader document={baseDocument()} dict={en} />);
 
     expect(screen.queryByRole("link")).not.toBeInTheDocument();
   });
 
   it("does not render page counts or upload timestamps", () => {
-    render(<DocumentHeader document={baseDocument()} />);
+    render(<DocumentHeader document={baseDocument()} dict={en} />);
 
     expect(screen.queryByText(/Pages:/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Uploaded:/)).not.toBeInTheDocument();
   });
 
   it("shows an OCR-required alert when the document has no usable text", () => {
-    render(<DocumentHeader document={baseDocument({ status: "ocr_required" })} />);
+    render(<DocumentHeader document={baseDocument({ status: "ocr_required" })} dict={en} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("No usable text");
   });
 
   it("shows no alert for a normally parsed document", () => {
-    render(<DocumentHeader document={baseDocument()} />);
+    render(<DocumentHeader document={baseDocument()} dict={en} />);
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });

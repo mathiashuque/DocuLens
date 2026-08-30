@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { uploadDocument } from "@/lib/upload";
+import en from "@/lib/i18n/dictionaries/en";
 
 function validDocumentBody() {
   return {
@@ -33,7 +34,7 @@ describe("uploadDocument", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(201, validDocumentBody()));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(true);
     if (result.ok) {
@@ -50,7 +51,7 @@ describe("uploadDocument", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(201, { unexpected: true }));
     vi.stubGlobal("fetch", fetchMock);
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(false);
   });
@@ -61,7 +62,7 @@ describe("uploadDocument", () => {
       vi.fn().mockResolvedValue(jsonResponse(413, { message: "too big" }))
     );
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -72,7 +73,7 @@ describe("uploadDocument", () => {
   it("maps 415 to a friendly type message", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(415, {})));
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -86,7 +87,7 @@ describe("uploadDocument", () => {
       vi.fn().mockResolvedValue(jsonResponse(422, { message: "Encrypted PDFs are not supported." }))
     );
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -97,7 +98,7 @@ describe("uploadDocument", () => {
   it("returns a generic message for an unexpected status", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(500, {})));
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
@@ -108,7 +109,7 @@ describe("uploadDocument", () => {
   it("handles a network failure without throwing", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("network down")));
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(false);
   });
@@ -117,7 +118,7 @@ describe("uploadDocument", () => {
     const malformed = new Response("not json", { status: 201 });
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(malformed));
 
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, en.upload);
 
     expect(result.ok).toBe(false);
   });
@@ -126,7 +127,7 @@ describe("uploadDocument", () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(500, {}));
     vi.stubGlobal("fetch", fetchMock);
 
-    await uploadDocument(file);
+    await uploadDocument(file, en.upload);
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });

@@ -3,13 +3,14 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AskDocuLens } from "@/components/questions/AskDocuLens";
+import en from "@/lib/i18n/dictionaries/en";
 
 const DOCUMENT_ID = "5c68e652-ab9d-442d-a5b3-d24b015155ad";
 const citationId = "1a5501f3-425d-4d34-b7e2-7db61e37351e";
 const json = (status: number, body: unknown) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 function renderPanel(pages = [1, 2]) {
-  return render(<AskDocuLens documentId={DOCUMENT_ID} documentStatus="parsed" documentPageNumbers={pages} />);
+  return render(<AskDocuLens documentId={DOCUMENT_ID} documentStatus="parsed" documentPageNumbers={pages} dict={en} lang="en" />);
 }
 
 function composerInput() {
