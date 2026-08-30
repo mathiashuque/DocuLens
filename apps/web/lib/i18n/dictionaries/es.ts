@@ -6,6 +6,11 @@ const es: Dictionary = {
     languageSwitcherLabel: "Idioma",
     languageOptionAriaLabel: "Cambiar idioma a {language}",
   },
+  footer: {
+    tagline: "Evidencia, no suposiciones",
+    attribution: "Diseñado y desarrollado por Mathias",
+    portfolioLink: "Ver portafolio",
+  },
   home: {
     heading: "Comprende documentos complejos con evidencia, no con suposiciones.",
     subheading:

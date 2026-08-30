@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getDictionary } from "@/lib/i18n/dictionaries";
 import { isLocale, SUPPORTED_LOCALES, type Locale } from "@/lib/i18n/locales";
 import { getSiteUrl } from "@/lib/site-config";
@@ -100,7 +101,10 @@ export default async function LangLayout({ children, params }: LangLayoutProps) 
             </Suspense>
           </div>
         </header>
-        <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">{children}</main>
+        <main className="flex min-h-0 w-full flex-1 flex-col overflow-y-auto">
+          {children}
+          <SiteFooter dict={dict.footer} />
+        </main>
       </body>
     </html>
   );

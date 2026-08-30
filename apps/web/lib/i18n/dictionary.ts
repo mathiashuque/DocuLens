@@ -16,6 +16,11 @@ export type Dictionary = {
     /** `{language}` */
     languageOptionAriaLabel: string;
   };
+  footer: {
+    tagline: string;
+    attribution: string;
+    portfolioLink: string;
+  };
   home: {
     heading: string;
     subheading: string;

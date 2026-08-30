@@ -6,6 +6,11 @@ const en: Dictionary = {
     languageSwitcherLabel: "Language",
     languageOptionAriaLabel: "Switch language to {language}",
   },
+  footer: {
+    tagline: "Evidence over guesswork",
+    attribution: "Designed and built by Mathias",
+    portfolioLink: "View portfolio",
+  },
   home: {
     heading: "Understand complex documents with evidence, not guesswork.",
     subheading:

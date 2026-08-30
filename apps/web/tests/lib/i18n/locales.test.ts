@@ -32,6 +32,11 @@ describe("dictionary parity", () => {
   it("gives English and Spanish dictionaries the exact same key shape", () => {
     expect(deepKeys(en)).toEqual(deepKeys(es));
   });
+
+  it("includes the complete localized footer contract", () => {
+    expect(Object.keys(en.footer).sort()).toEqual(["attribution", "portfolioLink", "tagline"]);
+    expect(Object.keys(es.footer).sort()).toEqual(Object.keys(en.footer).sort());
+  });
 });
 
 function deepKeys(value: unknown, prefix = ""): string[] {
