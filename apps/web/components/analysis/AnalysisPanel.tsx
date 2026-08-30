@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { Reveal } from "@/components/motion/primitives";
 import type { AnalysisLoadResult } from "@/lib/analysis-client";
 import { analysisPagesExistIn } from "@/lib/analysis-evidence";
 import type { Analysis } from "@/lib/analysis-schema";
@@ -54,29 +55,35 @@ export function AnalysisPanel({
       );
     }
 
-    return <AnalysisView analysis={analysis} />;
+    return (
+      <Reveal>
+        <AnalysisView analysis={analysis} />
+      </Reveal>
+    );
   }
 
   return (
-    <section
-      aria-labelledby="analysis-heading"
-      className="flex flex-col gap-4 rounded-md border border-zinc-200 bg-white p-5"
-    >
-      <h2 id="analysis-heading" className="text-lg font-semibold text-zinc-900">
-        Analysis
-      </h2>
-      <p className="text-sm text-zinc-600">
-        Generate an AI-assisted, evidence-backed analysis of this document. Every
-        claim will cite the exact page and quote it came from.
-      </p>
-
-      {loadErrorMessage ? (
-        <p role="alert" className="text-sm font-medium text-red-700">
-          {loadErrorMessage}
+    <Reveal>
+      <section
+        aria-labelledby="analysis-heading"
+        className="flex flex-col gap-4 rounded-card border border-zinc-200 bg-white p-5 shadow-sm"
+      >
+        <h2 id="analysis-heading" className="text-lg font-semibold text-ink">
+          Analysis
+        </h2>
+        <p className="text-sm text-ink-muted">
+          Generate an AI-assisted, evidence-backed analysis of this document. Every
+          claim will cite the exact page and quote it came from.
         </p>
-      ) : null}
 
-      <AnalyzeButton documentId={documentId} onSuccess={setAnalysis} />
-    </section>
+        {loadErrorMessage ? (
+          <p role="alert" className="text-sm font-medium text-red-700">
+            {loadErrorMessage}
+          </p>
+        ) : null}
+
+        <AnalyzeButton documentId={documentId} onSuccess={setAnalysis} />
+      </section>
+    </Reveal>
   );
 }

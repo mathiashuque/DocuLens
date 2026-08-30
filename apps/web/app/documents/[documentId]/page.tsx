@@ -44,7 +44,7 @@ export default async function DocumentPage({ params }: DocumentPageProps) {
     <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-10 px-6 py-16">
       <DocumentSummary document={document} />
       {document.demo_slug ? (
-        <aside className="rounded-md border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950">
+        <aside className="rounded-card border border-sky-300 bg-sky-50 p-4 text-sm text-sky-950">
           <p className="font-semibold">Precomputed demo</p>
           <p className="mt-1">This synthetic document, analysis, and its example answers were curated in advance. Loading it does not call an AI provider.</p>
         </aside>

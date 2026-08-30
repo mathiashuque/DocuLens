@@ -8,14 +8,14 @@ import { pageAnchorId } from "@/lib/analysis-evidence";
  */
 export function EvidenceQuote({ page, quote }: { page: number; quote: string }) {
   return (
-    <figure className="mt-2 rounded-md border border-zinc-200 bg-zinc-50 p-3">
-      <blockquote className="whitespace-pre-wrap break-words text-sm text-zinc-700">
+    <figure className="mt-2 rounded-md border-y border-r border-l-2 border-zinc-200 border-l-accent bg-accent-soft/40 py-2 pr-3 pl-3">
+      <blockquote className="whitespace-pre-wrap break-words text-sm text-ink-muted italic">
         &ldquo;{quote}&rdquo;
       </blockquote>
-      <figcaption className="mt-2 text-xs text-zinc-500">
+      <figcaption className="mt-2 text-xs text-ink-subtle not-italic">
         <a
           href={`#${pageAnchorId(page)}`}
-          className="font-medium text-zinc-700 underline underline-offset-2 hover:text-zinc-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900"
+          className="font-medium text-accent-strong underline underline-offset-2 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
         >
           View page {page}
         </a>

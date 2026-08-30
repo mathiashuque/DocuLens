@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
+import { Reveal } from "@/components/motion/primitives";
 import { formatBytes } from "@/lib/format";
 import { ACCEPTED_CONTENT_TYPE, MAX_UPLOAD_BYTES, uploadDocument } from "@/lib/upload";
 
@@ -73,7 +74,7 @@ export function UploadForm() {
   return (
     <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <label htmlFor="document-file" className="text-sm font-medium text-zinc-900">
+        <label htmlFor="document-file" className="text-sm font-medium text-ink">
           PDF document
         </label>
         <input
@@ -84,19 +85,21 @@ export function UploadForm() {
           onChange={handleFileChange}
           disabled={isUploading}
           aria-describedby={state.status === "error" ? errorId : undefined}
-          className="block w-full rounded-md border border-zinc-300 text-sm text-zinc-700 file:mr-4 file:rounded-md file:border-0 file:bg-zinc-900 file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="block w-full rounded-md border border-zinc-300 text-sm text-ink-muted file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
         />
         {file ? (
-          <p className="text-sm text-zinc-600">
-            {file.name} &middot; {formatBytes(file.size)}
-          </p>
+          <Reveal>
+            <p className="text-sm text-ink-muted">
+              {file.name} &middot; {formatBytes(file.size)}
+            </p>
+          </Reveal>
         ) : null}
       </div>
 
       <button
         type="submit"
         disabled={!file || isUploading}
-        className="inline-flex w-fit items-center justify-center rounded-md bg-zinc-900 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-zinc-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]"
       >
         {isUploading ? "Uploading…" : "Upload document"}
       </button>
@@ -106,15 +109,17 @@ export function UploadForm() {
       </p>
 
       {state.status === "error" ? (
-        <p
-          id={errorId}
-          ref={errorRef}
-          role="alert"
-          tabIndex={-1}
-          className="text-sm font-medium text-red-700 focus:outline-none"
-        >
-          {state.message}
-        </p>
+        <Reveal>
+          <p
+            id={errorId}
+            ref={errorRef}
+            role="alert"
+            tabIndex={-1}
+            className="text-sm font-medium text-red-700 focus:outline-none"
+          >
+            {state.message}
+          </p>
+        </Reveal>
       ) : null}
     </form>
   );
