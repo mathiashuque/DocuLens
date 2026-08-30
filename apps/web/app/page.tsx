@@ -1,6 +1,26 @@
+import type { Metadata } from "next";
+
 import { UploadForm } from "@/components/UploadForm";
 import { UsageAllowance } from "@/components/UsageAllowance";
 import { Reveal, StaggerGroup, StaggerItem } from "@/components/motion/primitives";
+import { getSiteUrl } from "@/lib/site-config";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
+
+const jsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  name: "DocuLens",
+  url: getSiteUrl(),
+  description:
+    "Upload a PDF, then ask it questions or request analysis grounded in the exact page and quote it came from.",
+  applicationCategory: "BusinessApplication",
+  operatingSystem: "Any (web browser)",
+};
 
 const STEPS = [
   {
@@ -23,6 +43,15 @@ const STEPS = [
 export default function HomePage() {
   return (
     <div className="flex flex-1 flex-col items-center px-6 py-16 sm:py-20">
+      <script
+        type="application/ld+json"
+        // Static, trusted marketing fields only — never uploaded-document or
+        // user-controlled values. `<` is escaped per Next.js guidance for
+        // safely embedding JSON in a script tag.
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        }}
+      />
       <div className="grid w-full max-w-5xl items-start gap-10 lg:grid-cols-[minmax(0,1fr)_22rem] lg:gap-14">
         <Reveal>
           <h1 className="text-3xl font-semibold tracking-tight text-balance text-ink sm:text-4xl lg:text-5xl">

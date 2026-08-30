@@ -1,12 +1,40 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
+
+import { getSiteUrl } from "@/lib/site-config";
 
 import "./globals.css";
 
+const description =
+  "Upload a PDF, then ask it questions or request analysis. DocuLens grounds every answer in the exact page and quote it came from, and says so when the document doesn't have the answer.";
+
 export const metadata: Metadata = {
-  title: "DocuLens",
-  description:
-    "Upload a PDF and ask it anything. DocuLens answers with exact page evidence, or tells you honestly when the document doesn't say.",
+  metadataBase: new URL(getSiteUrl()),
+  title: {
+    template: "%s | DocuLens",
+    default: "DocuLens — Ask your documents, with evidence",
+  },
+  description,
+  applicationName: "DocuLens",
+  formatDetection: {
+    telephone: false,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "DocuLens",
+    title: "DocuLens — Ask your documents, with evidence",
+    description,
+    url: "/",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "DocuLens — Ask your documents, with evidence",
+    description,
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#4338ca",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
