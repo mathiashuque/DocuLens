@@ -10,16 +10,16 @@ const CAPABILITIES = [
     description: "Drop in a PDF. Pages and section structure are preserved from the start.",
   },
   {
-    title: "Structured analysis",
-    description: "Findings, important dates, risks, and document-specific fields, not a raw summary.",
+    title: "Ask anything",
+    description: "Ask direct questions or request analysis — risks, obligations, deadlines, comparisons, summaries.",
   },
   {
     title: "Evidence",
     description: "Every claim links back to the exact page and quote it came from.",
   },
   {
-    title: "Grounded Q&A",
-    description: "Ask a question and get an answer with citations, or a clear insufficient-evidence result.",
+    title: "Grounded answers",
+    description: "Every answer is grounded in this document, or reports a clear insufficient-evidence result.",
   },
 ];
 
@@ -33,9 +33,10 @@ export default async function HomePage() {
             Understand complex documents with evidence, not guesswork.
           </h1>
           <p className="mt-4 max-w-xl text-base leading-7 text-ink-muted">
-            Upload a document and DocuLens returns structured findings, risks, and
-            important dates, plus citation-grounded answers to your questions &mdash;
-            every claim traceable back to the exact page and quote it came from.
+            Upload a document, then ask it anything &mdash; factual questions,
+            risk analysis, obligation extraction, deadlines, comparisons, or
+            summaries. Every answer is grounded in this document and traceable
+            back to the exact page and quote it came from.
           </p>
 
           <div className="mt-8 max-w-xl rounded-card border border-hairline bg-surface p-6 shadow-card">

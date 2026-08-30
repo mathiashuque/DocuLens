@@ -2,11 +2,15 @@ import Link from "next/link";
 
 import { StatusBadge } from "@/components/StatusBadge";
 import type { Document } from "@/lib/document-schema";
-import { formatDateTime } from "@/lib/format";
 
-export function DocumentSummary({ document }: { document: Document }) {
+/**
+ * Compact chat-workspace identity bar: filename and status only. No page
+ * counts, upload timestamp, or other document-inspection metadata — the
+ * `/documents/[documentId]` route is a focused chat, not a summary dashboard.
+ */
+export function DocumentHeader({ document }: { document: Document }) {
   return (
-    <header className="flex flex-col gap-4 border-b border-hairline pb-8">
+    <header className="flex flex-col gap-4 border-b border-hairline pb-6">
       <Link
         href="/"
         className="w-fit text-sm font-medium text-ink-muted hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent"
@@ -21,25 +25,13 @@ export function DocumentSummary({ document }: { document: Document }) {
         <StatusBadge status={document.status} />
       </div>
 
-      <dl className="flex flex-wrap gap-x-8 gap-y-2 text-sm text-ink-muted">
-        <div>
-          <dt className="inline font-medium text-ink">Pages: </dt>
-          <dd className="inline">{document.page_count}</dd>
-        </div>
-        <div>
-          <dt className="inline font-medium text-ink">Uploaded: </dt>
-          <dd className="inline">{formatDateTime(document.created_at)}</dd>
-        </div>
-      </dl>
-
       {document.status === "ocr_required" ? (
         <div
           role="alert"
           className="rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900"
         >
           No usable text could be extracted from this document. It may be a scanned
-          image, and OCR is not yet supported — structure and page text below are
-          not available.
+          image, and OCR is not yet supported, so it cannot be used for Q&A.
         </div>
       ) : null}
     </header>

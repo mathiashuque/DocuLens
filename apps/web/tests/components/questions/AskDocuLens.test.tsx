@@ -15,22 +15,42 @@ function renderPanel(pages = [1, 2]) {
 describe("AskDocuLens", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("does not index on render, prevents duplicate preparation, and enables a question form", async () => {
-    let resolveIndex: (value: Response) => void = () => {};
-    const fetchMock = vi.fn().mockReturnValue(new Promise<Response>((resolve) => { resolveIndex = resolve; }));
+  it("prepares automatically on mount with no manual Prepare Q&A step", async () => {
+    const fetchMock = vi.fn().mockResolvedValueOnce(json(200, { document_id: DOCUMENT_ID, status: "completed" }));
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel();
+
+    expect(screen.getByRole("status")).toHaveTextContent("Preparing this document for Q&A");
+    await screen.findByRole("button", { name: "Ask DocuLens" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "Prepare Q&A" })).not.toBeInTheDocument();
+  });
+
+  it("shows a retryable error and does not duplicate preparation calls while retrying", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json(502, { error: "provider_invalid", message: "The embedding service failed." }))
+      .mockResolvedValueOnce(json(200, { document_id: DOCUMENT_ID, status: "completed" }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     renderPanel();
-    expect(fetchMock).not.toHaveBeenCalled();
-    await user.click(screen.getByRole("button", { name: "Prepare Q&A" }));
-    expect(screen.getByRole("button", { name: "Preparing Q&A…" })).toBeDisabled();
-    await user.click(screen.getByRole("button", { name: "Preparing Q&A…" }));
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    resolveIndex(json(201, { document_id: DOCUMENT_ID, status: "completed" }));
+
+    await screen.findByRole("alert");
+    expect(screen.getByRole("alert")).toHaveTextContent("The embedding service failed.");
+    await user.click(screen.getByRole("button", { name: "Retry preparation" }));
     await screen.findByRole("button", { name: "Ask DocuLens" });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("renders validated evidence links and keeps insufficient evidence citation-free", async () => {
+  it("does not offer a retry for an ineligible document", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValueOnce(json(409, { error: "ineligible_document", message: "This document is not eligible for Q&A." })));
+    renderPanel();
+
+    await screen.findByRole("alert");
+    expect(screen.queryByRole("button", { name: "Retry preparation" })).not.toBeInTheDocument();
+  });
+
+  it("keeps prior turns visible and renders inline page evidence without page-anchor links", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(json(200, { document_id: DOCUMENT_ID, status: "completed" }))
@@ -44,40 +64,60 @@ describe("AskDocuLens", () => {
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     renderPanel();
-    await user.click(screen.getByRole("button", { name: "Prepare Q&A" }));
     await screen.findByRole("button", { name: "Ask DocuLens" });
+
     const input = screen.getByLabelText("Your question");
     await user.type(input, "What applies?");
     await user.click(screen.getByRole("button", { name: "Ask DocuLens" }));
     await screen.findByText("The policy applies.");
-    expect(screen.getByRole("link", { name: "View page 2" })).toHaveAttribute("href", "#page-2");
+    expect(screen.getByText("Page 2")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /page 2/i })).not.toBeInTheDocument();
+
     await user.clear(input);
     await user.type(input, "What is absent?");
     await user.click(screen.getByRole("button", { name: "Ask DocuLens" }));
     await screen.findByText("Insufficient evidence");
-    expect(screen.queryByRole("list", { name: "Answer citations" })).not.toBeInTheDocument();
+
+    // the first turn's answer remains visible alongside the new one
+    expect(screen.getByText("The policy applies.")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Answer citations" })).toBeInTheDocument();
   });
 
-  it("fails closed when a citation page is absent and returns to preparation when an index is missing", async () => {
+  it("fails closed when a citation page is absent from the document", async () => {
     const fetchMock = vi
       .fn()
       .mockResolvedValueOnce(json(200, { document_id: DOCUMENT_ID, status: "completed" }))
       .mockResolvedValueOnce(json(200, {
         document_id: DOCUMENT_ID, question: "What applies?", status: "answered", answer: "The policy applies.",
         citations: [{ chunk_id: citationId, page: 3, evidence: "Policy text." }],
-      }))
-      .mockResolvedValueOnce(json(409, { error: "missing_index", message: "Prepare Q&A before asking a question." }));
+      }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
     renderPanel([1]);
-    await user.click(screen.getByRole("button", { name: "Prepare Q&A" }));
     await screen.findByRole("button", { name: "Ask DocuLens" });
+
     const input = screen.getByLabelText("Your question");
     await user.type(input, "What applies?");
     await user.click(screen.getByRole("button", { name: "Ask DocuLens" }));
     await screen.findByRole("alert");
     expect(screen.queryByText("The policy applies.")).not.toBeInTheDocument();
+  });
+
+  it("returns to a recoverable preparation state when the index goes missing mid-session", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(json(200, { document_id: DOCUMENT_ID, status: "completed" }))
+      .mockResolvedValueOnce(json(409, { error: "missing_index", message: "Prepare Q&A before asking a question." }));
+    vi.stubGlobal("fetch", fetchMock);
+    const user = userEvent.setup();
+    renderPanel();
+    await screen.findByRole("button", { name: "Ask DocuLens" });
+
+    const input = screen.getByLabelText("Your question");
+    await user.type(input, "What applies?");
     await user.click(screen.getByRole("button", { name: "Ask DocuLens" }));
-    await waitFor(() => expect(screen.getByRole("button", { name: "Prepare Q&A" })).toBeInTheDocument());
+
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("Prepare Q&A before asking a question."));
+    expect(screen.getByRole("button", { name: "Retry preparation" })).toBeInTheDocument();
   });
 });

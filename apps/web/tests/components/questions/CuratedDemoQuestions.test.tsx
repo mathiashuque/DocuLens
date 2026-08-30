@@ -5,7 +5,7 @@ import { describe, expect, it } from "vitest";
 import { CuratedDemoQuestions } from "@/components/questions/CuratedDemoQuestions";
 
 describe("CuratedDemoQuestions", () => {
-  it("reveals only an exactly selected precomputed answer with a page link", async () => {
+  it("reveals only an exactly selected precomputed answer with inline page evidence", async () => {
     const user = userEvent.setup();
     render(<CuratedDemoQuestions questions={[{
       id: "payment", question: "When is payment due?", status: "answered",
@@ -15,7 +15,8 @@ describe("CuratedDemoQuestions", () => {
     expect(screen.queryByText("On the first business day.")).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "When is payment due?" }));
     expect(screen.getByText("On the first business day.")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "View page 2" })).toHaveAttribute("href", "#page-2");
+    expect(screen.getByText("Page 2")).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /page 2/i })).not.toBeInTheDocument();
   });
 
   it("renders insufficient evidence without a citation shell", async () => {

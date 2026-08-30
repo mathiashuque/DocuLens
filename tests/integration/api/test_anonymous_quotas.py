@@ -54,7 +54,6 @@ def test_chargeable_endpoint_requires_valid_session_but_demo_read_is_free(
     document_id = uuid.uuid4()
     chargeable_requests = (
         (f"/api/documents/{document_id}/classification", None),
-        (f"/api/documents/{document_id}/analysis", None),
         (f"/api/documents/{document_id}/index", None),
         (f"/api/documents/{document_id}/search", {"query": "bounded"}),
         (f"/api/documents/{document_id}/questions", {"question": "bounded"}),

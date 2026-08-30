@@ -6,11 +6,13 @@ import { useRouter } from "next/navigation";
 import { Reveal } from "@/components/motion/primitives";
 import { formatBytes } from "@/lib/format";
 import { ACCEPTED_CONTENT_TYPE, MAX_UPLOAD_BYTES, uploadDocument } from "@/lib/upload";
+import { prepareQuestionAnswering } from "@/lib/question-actions";
 
 type FormState =
   | { status: "idle" }
   | { status: "uploading" }
-  | { status: "error"; message: string };
+  | { status: "preparing"; documentId: string }
+  | { status: "error"; message: string; retryDocumentId?: string };
 
 export function UploadForm() {
   const router = useRouter();
@@ -19,7 +21,7 @@ export function UploadForm() {
   const errorRef = useRef<HTMLParagraphElement>(null);
   const errorId = useId();
 
-  const isUploading = state.status === "uploading";
+  const busy = state.status === "uploading" || state.status === "preparing";
 
   useEffect(() => {
     if (state.status === "error") {
@@ -54,21 +56,39 @@ export function UploadForm() {
     setState({ status: "idle" });
   }
 
+  async function prepareAndEnter(documentId: string) {
+    setState({ status: "preparing", documentId });
+    const result = await prepareQuestionAnswering(documentId);
+    if (result.ok) {
+      router.push(`/documents/${documentId}`);
+      return;
+    }
+    setState({
+      status: "error",
+      message: result.message,
+      retryDocumentId: documentId,
+    });
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!file || isUploading) {
+    if (!file || busy) {
       return;
     }
 
     setState({ status: "uploading" });
     const result = await uploadDocument(file);
 
-    if (result.ok) {
-      router.push(`/documents/${result.document.id}`);
+    if (!result.ok) {
+      setState({ status: "error", message: result.message });
       return;
     }
 
-    setState({ status: "error", message: result.message });
+    await prepareAndEnter(result.document.id);
+  }
+
+  async function handleRetryPreparation(documentId: string) {
+    await prepareAndEnter(documentId);
   }
 
   return (
@@ -83,7 +103,7 @@ export function UploadForm() {
           type="file"
           accept="application/pdf,.pdf"
           onChange={handleFileChange}
-          disabled={isUploading}
+          disabled={busy}
           aria-describedby={state.status === "error" ? errorId : undefined}
           className="block w-full rounded-md border border-zinc-300 text-sm text-ink-muted file:mr-4 file:rounded-md file:border-0 file:bg-accent file:px-4 file:py-2 file:text-sm file:font-medium file:text-white hover:file:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-60"
         />
@@ -98,27 +118,43 @@ export function UploadForm() {
 
       <button
         type="submit"
-        disabled={!file || isUploading}
+        disabled={!file || busy}
         className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]"
       >
-        {isUploading ? "Uploading…" : "Upload document"}
+        {state.status === "uploading" ? "Uploading…" : state.status === "preparing" ? "Preparing…" : "Upload document"}
       </button>
 
       <p aria-live="polite" className="sr-only">
-        {isUploading ? "Uploading document." : ""}
+        {state.status === "uploading" ? "Uploading document." : ""}
+        {state.status === "preparing" ? "Preparing document for questions." : ""}
       </p>
 
       {state.status === "error" ? (
         <Reveal>
-          <p
-            id={errorId}
-            ref={errorRef}
-            role="alert"
-            tabIndex={-1}
-            className="text-sm font-medium text-red-700 focus:outline-none"
-          >
-            {state.message}
-          </p>
+          <div className="flex flex-col gap-3">
+            <p
+              id={errorId}
+              ref={errorRef}
+              role="alert"
+              tabIndex={-1}
+              className="text-sm font-medium text-red-700 focus:outline-none"
+            >
+              {state.message}
+            </p>
+            {(() => {
+              const retryDocumentId = state.retryDocumentId;
+              if (!retryDocumentId) return null;
+              return (
+                <button
+                  type="button"
+                  onClick={() => handleRetryPreparation(retryDocumentId)}
+                  className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]"
+                >
+                  Retry preparation
+                </button>
+              );
+            })()}
+          </div>
         </Reveal>
       ) : null}
     </form>
