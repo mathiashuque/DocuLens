@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { AskDocuLens } from "@/components/questions/AskDocuLens";
+import en from "@/lib/i18n/dictionaries/en";
 import { mockPrefersReducedMotion } from "../../test-utils/reduced-motion";
 
 const DOCUMENT_ID = "5c68e652-ab9d-442d-a5b3-d24b015155ad";
@@ -33,7 +34,7 @@ describe("AskDocuLens under prefers-reduced-motion: reduce", () => {
       }));
     vi.stubGlobal("fetch", fetchMock);
     const user = userEvent.setup();
-    render(<AskDocuLens documentId={DOCUMENT_ID} documentStatus="parsed" documentPageNumbers={[1]} />);
+    render(<AskDocuLens documentId={DOCUMENT_ID} documentStatus="parsed" documentPageNumbers={[1]} dict={en} lang="en" />);
 
     const examplePrompt = await screen.findByRole("button", { name: "Summarize this document" });
     expect(examplePrompt.style.opacity).not.toBe("0");

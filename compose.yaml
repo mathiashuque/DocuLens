@@ -54,6 +54,10 @@ services:
     ports:
       - "${WEB_HOST_PORT:-3000}:3000"
     environment:
+      # Also needed at runtime (not just build time): routes that aren't
+      # fully static-prerendered call generateMetadata per-request, which
+      # reads this from process.env. See apps/web/lib/site-config.ts.
+      DOCULENS_SITE_URL: ${DOCULENS_SITE_URL:-http://localhost:${WEB_HOST_PORT:-3000}}
       # `api` is the in-network service name; the web app never reaches the
       # backend via localhost. Never prefix with NEXT_PUBLIC_ — the browser
       # must never see this.

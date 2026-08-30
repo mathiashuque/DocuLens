@@ -12,6 +12,8 @@ import {
 import { useRouter } from "next/navigation";
 
 import { Reveal } from "@/components/motion/primitives";
+import type { Dictionary } from "@/lib/i18n/dictionary";
+import type { Locale } from "@/lib/i18n/locales";
 import { formatBytes } from "@/lib/format";
 import { ACCEPTED_CONTENT_TYPE, MAX_UPLOAD_BYTES, uploadDocument } from "@/lib/upload";
 import { prepareQuestionAnswering } from "@/lib/question-actions";
@@ -31,7 +33,8 @@ function FileIcon() {
   );
 }
 
-export function UploadForm() {
+export function UploadForm({ dict, lang }: { dict: Dictionary; lang: Locale }) {
+  const t = dict.upload;
   const router = useRouter();
   const [file, setFile] = useState<File | null>(null);
   const [state, setState] = useState<FormState>({ status: "idle" });
@@ -52,13 +55,13 @@ export function UploadForm() {
   function acceptFile(selected: File): boolean {
     if (selected.type !== ACCEPTED_CONTENT_TYPE) {
       setFile(null);
-      setState({ status: "error", message: "Choose a PDF file." });
+      setState({ status: "error", message: t.errorChooseFile });
       return false;
     }
 
     if (selected.size > MAX_UPLOAD_BYTES) {
       setFile(null);
-      setState({ status: "error", message: "That file is larger than 10 MB." });
+      setState({ status: "error", message: t.errorTooLarge });
       return false;
     }
 
@@ -90,9 +93,9 @@ export function UploadForm() {
 
   async function prepareAndEnter(documentId: string) {
     setState({ status: "preparing", documentId });
-    const result = await prepareQuestionAnswering(documentId);
+    const result = await prepareQuestionAnswering(documentId, dict.errors, lang);
     if (result.ok) {
-      router.push(`/documents/${documentId}`);
+      router.push(`/${lang}/documents/${documentId}`);
       return;
     }
     setState({
@@ -109,7 +112,7 @@ export function UploadForm() {
     }
 
     setState({ status: "uploading" });
-    const result = await uploadDocument(file);
+    const result = await uploadDocument(file, t);
 
     if (!result.ok) {
       setState({ status: "error", message: result.message });
@@ -141,7 +144,7 @@ export function UploadForm() {
               disabled={busy}
               className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-muted hover:bg-canvas-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Change
+              {t.change}
             </button>
             <button
               type="button"
@@ -149,7 +152,7 @@ export function UploadForm() {
               disabled={busy}
               className="rounded-md px-2 py-1.5 text-xs font-medium text-ink-muted hover:bg-canvas-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Remove
+              {t.remove}
             </button>
           </div>
         </div>
@@ -164,9 +167,9 @@ export function UploadForm() {
           }`}
         >
           <span className="text-sm font-medium text-ink">
-            Drop a PDF here, or <span className="text-accent underline underline-offset-2">browse</span>
+            {t.dropPrefix} <span className="text-accent underline underline-offset-2">{t.browse}</span>
           </span>
-          <span className="text-xs text-ink-subtle">Up to 10 MB</span>
+          <span className="text-xs text-ink-subtle">{t.sizeHint}</span>
         </label>
       )}
 
@@ -176,7 +179,7 @@ export function UploadForm() {
         name="file"
         type="file"
         accept="application/pdf,.pdf"
-        aria-label="PDF document"
+        aria-label={t.fileInputAriaLabel}
         onChange={handleFileChange}
         disabled={busy}
         aria-describedby={state.status === "error" ? errorId : undefined}
@@ -188,12 +191,12 @@ export function UploadForm() {
         disabled={!file || busy}
         className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent disabled:cursor-not-allowed disabled:opacity-50 motion-safe:active:scale-[0.98]"
       >
-        {state.status === "uploading" ? "Uploading…" : state.status === "preparing" ? "Preparing…" : "Upload document"}
+        {state.status === "uploading" ? t.uploading : state.status === "preparing" ? t.preparing : t.uploadButton}
       </button>
 
       <p aria-live="polite" className="sr-only">
-        {state.status === "uploading" ? "Uploading document." : ""}
-        {state.status === "preparing" ? "Preparing document for questions." : ""}
+        {state.status === "uploading" ? t.liveUploading : ""}
+        {state.status === "preparing" ? t.livePreparing : ""}
       </p>
 
       {state.status === "error" ? (
@@ -213,13 +216,13 @@ export function UploadForm() {
               if (!retryDocumentId) return null;
               return (
                 <div className="flex flex-col gap-1.5">
-                  <p className="text-xs text-ink-subtle">Your file is already uploaded — retrying only resumes preparation.</p>
+                  <p className="text-xs text-ink-subtle">{t.errorAlreadyUploadedRetry}</p>
                   <button
                     type="button"
                     onClick={() => handleRetryPreparation(retryDocumentId)}
                     className="inline-flex w-fit items-center justify-center rounded-md bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-accent-strong focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent motion-safe:active:scale-[0.98]"
                   >
-                    Retry preparation
+                    {t.retryPreparation}
                   </button>
                 </div>
               );

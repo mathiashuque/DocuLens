@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { metadata } from "@/app/documents/[documentId]/layout";
+import { metadata } from "@/app/[lang]/documents/[documentId]/layout";
 
 describe("document route robots metadata", () => {
   it("is noindex/nofollow and carries no document-derived fields", () => {

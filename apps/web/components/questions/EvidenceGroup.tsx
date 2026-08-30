@@ -1,5 +1,7 @@
 import { EvidenceQuote } from "@/components/analysis/EvidenceQuote";
 import { StaggerGroup, StaggerItem } from "@/components/motion/primitives";
+import type { Dictionary } from "@/lib/i18n/dictionary";
+import { interpolate } from "@/lib/i18n/interpolate";
 import type { QuestionCitation } from "@/lib/question-schema";
 
 /**
@@ -9,19 +11,25 @@ import type { QuestionCitation } from "@/lib/question-schema";
  * disclosure control (and its own accessible-state tests) that this scope
  * does not need.
  */
-export function EvidenceGroup({ citations }: { citations: readonly QuestionCitation[] }) {
+export function EvidenceGroup({
+  citations,
+  dict,
+}: {
+  citations: readonly QuestionCitation[];
+  dict: Dictionary["questions"];
+}) {
   if (!citations.length) return null;
 
   return (
     <div className="mt-3 flex flex-col gap-2 border-t border-hairline pt-3">
-      <p className="text-xs font-semibold tracking-wide text-ink-subtle uppercase">
-        Sources
-      </p>
-      <StaggerGroup as="ul" className="flex flex-col gap-3" aria-label="Answer citations">
+      <p className="text-xs font-semibold tracking-wide text-ink-subtle uppercase">{dict.sourcesLabel}</p>
+      <StaggerGroup as="ul" className="flex flex-col gap-3" aria-label={dict.evidenceCitationsAriaLabel}>
         {citations.map((citation, index) => (
           <StaggerItem as="li" key={citation.chunk_id} className="list-none">
-            <p className="text-xs font-medium text-ink-subtle">Citation {index + 1}</p>
-            <EvidenceQuote page={citation.page} quote={citation.evidence} />
+            <p className="text-xs font-medium text-ink-subtle">
+              {interpolate(dict.citationLabel, { index: index + 1 })}
+            </p>
+            <EvidenceQuote page={citation.page} quote={citation.evidence} pageLabel={dict.evidencePageLabel} />
           </StaggerItem>
         ))}
       </StaggerGroup>

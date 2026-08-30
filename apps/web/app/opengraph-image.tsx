@@ -8,6 +8,13 @@ export const contentType = "image/png";
 // proposition. No screenshot, filename, question, answer, or fabricated
 // metric. Uses next/og's bundled default font — no network font loading, so
 // this stays safe for the standalone Docker build.
+//
+// Kept as one global, English image rather than moved under `[lang]`: social
+// crawlers resolve a single `og:image` per canonical URL, so a per-locale
+// variant would need locale-specific `alt`/`og:locale` wiring the crawler
+// side rarely honors for image content anyway. The `[lang]` layout still
+// sets locale-correct `og:locale`/`og:locale:alternate` text fields; only
+// this shared image stays brand-neutral English by deliberate choice.
 export default function Image() {
   return new ImageResponse(
     (
