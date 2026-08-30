@@ -1,0 +1,150 @@
+import type { Dictionary } from "../dictionary";
+
+const en: Dictionary = {
+  navigation: {
+    homeLinkAriaLabel: "DocuLens home",
+    languageSwitcherLabel: "Language",
+    languageOptionAriaLabel: "Switch language to {language}",
+  },
+  home: {
+    heading: "Understand complex documents with evidence, not guesswork.",
+    subheading:
+      "Upload a document, then ask it anything — factual questions, risk analysis, obligation extraction, deadlines, comparisons, or summaries. Every answer is grounded in this document and traceable back to the exact page and quote it came from.",
+    steps: [
+      {
+        step: "1",
+        title: "Upload",
+        description: "Drop in a PDF. It's prepared for grounded questions automatically.",
+      },
+      {
+        step: "2",
+        title: "Ask or analyze",
+        description:
+          "Ask a direct question, or request analysis — risks, obligations, deadlines, comparisons, summaries.",
+      },
+      {
+        step: "3",
+        title: "Read the evidence",
+        description: "Every answer cites the exact page and quote it came from, or says so when it can't.",
+      },
+    ],
+    stepLabel: "Step {step}",
+    jsonLdDescription:
+      "Upload a PDF, then ask it questions or request analysis grounded in the exact page and quote it came from.",
+    motifQuestion: "What happens if either party wants to end this early?",
+    motifQuote: "…either party may terminate with sixty days’ written notice…",
+  },
+  upload: {
+    dropPrefix: "Drop a PDF here, or",
+    browse: "browse",
+    sizeHint: "Up to 10 MB",
+    change: "Change",
+    remove: "Remove",
+    uploadButton: "Upload document",
+    uploading: "Uploading…",
+    preparing: "Preparing…",
+    fileInputAriaLabel: "PDF document",
+    liveUploading: "Uploading document.",
+    livePreparing: "Preparing document for questions.",
+    errorChooseFile: "Choose a PDF file.",
+    errorTooLarge: "That file is larger than 10 MB.",
+    errorAlreadyUploadedRetry: "Your file is already uploaded — retrying only resumes preparation.",
+    retryPreparation: "Retry preparation",
+    errorNetwork: "Could not reach the upload service. Check your connection and try again.",
+    errorUnexpectedResponse: "The upload service returned an unexpected response.",
+    errorTooLargeServer: "That file is too large. Upload a PDF under 10 MB.",
+    errorUnsupportedType: "That file type isn't supported. Upload a PDF.",
+    errorProcessingFailed: "The PDF could not be processed. It may be encrypted or corrupted.",
+    errorGeneric: "Something went wrong uploading the document. Please try again.",
+  },
+  usage: {
+    categoryLabel: {
+      index: "document uploads",
+      question: "questions",
+      analysis: "analyses",
+    },
+    usedUpToday: "You've used today's free {label} — more available at {resetTime}.",
+    usedUpTodayNoReset: "You've used today's free {label}.",
+    remaining: "{remaining} of {limit} free {label} left today",
+  },
+  document: {
+    notFoundHeading: "Document not found",
+    notFoundBody:
+      "We couldn't find a document with that ID. It may have been removed, or the link may be incorrect.",
+    uploadCta: "Upload a document",
+    errorHeading: "Something went wrong",
+    errorBody: "We couldn't load this document right now. Please try again in a moment.",
+    tryAgain: "Try again",
+    loading: "Loading document…",
+    precomputedDemoTitle: "Precomputed demo",
+    precomputedDemoBody: "This synthetic document was curated in advance. Loading it does not call an AI provider.",
+    ocrRequiredBody:
+      "No usable text could be extracted from this document. It may be a scanned image, and OCR is not yet supported, so it cannot be used for Q&A.",
+  },
+  status: {
+    parsed: "Parsed",
+    ocr_required: "OCR required",
+  },
+  notFound: {
+    heading: "Page not found",
+    body: "We couldn't find that page. It may have moved, or the link may be incorrect.",
+    homeCta: "Go to homepage",
+  },
+  questions: {
+    sectionAriaLabel: "Ask DocuLens",
+    preparing: "Preparing this document for Q&A…",
+    retryPreparation: "Retry preparation",
+    emptyHeading: "What would you like to know?",
+    emptyBody: "Answers are grounded in this document, with page evidence or an honest insufficient-evidence result.",
+    conversationAriaLabel: "Conversation with DocuLens",
+    jumpToLatest: "Jump to latest ↓",
+    composerLabel: "Ask anything about this document",
+    composerPlaceholder: "Ask anything about this document…",
+    sendAriaLabel: "Send question",
+    askingLive: "Asking DocuLens. Prior turns remain visible while a new answer is prepared.",
+    enterQuestionError: "Enter a question before asking DocuLens.",
+    citationPageMismatch: "The Q&A service returned a citation for a page that is not in this document.",
+    youAskedSr: "You asked: ",
+    insufficientEvidenceTitle: "Insufficient evidence",
+    insufficientEvidenceHint: "Try rephrasing your question using terms from the document.",
+    thinkingSr: "DocuLens is answering.",
+    examplePromptsAriaLabel: "Example prompts",
+    examples: [
+      "Summarize this document",
+      "Identify the main risks",
+      "List important deadlines",
+      "What should I pay attention to?",
+    ],
+    sourcesLabel: "Sources",
+    citationLabel: "Citation {index}",
+    evidenceCitationsAriaLabel: "Answer citations",
+    evidencePageLabel: "Page {page}",
+    exampleQuestionSr: "Example question: ",
+    demoQuestionsAriaLabel: "Precomputed demo questions",
+    demoBadge: "Precomputed demo",
+    demoHint: "Curated in advance — selecting a question below never calls an AI provider.",
+    demoExampleQuestionsAriaLabel: "Example demo questions",
+  },
+  errors: {
+    networkUnavailable: "Could not reach the Q&A service. Try again.",
+    malformedResponse: "The Q&A service returned an unexpected response.",
+    invalidQuestion: "Enter a question within the allowed length.",
+    validQuestionRetry: "Enter a valid question and try again.",
+    qaUnavailable: "The Q&A service is currently unavailable. Try again shortly.",
+    resetSuffix: " It resets {time}.",
+  },
+  metadata: {
+    titleTemplate: "%s | DocuLens",
+    defaultTitle: "DocuLens — Ask your documents, with evidence",
+    description:
+      "Upload a PDF, then ask it questions or request analysis. DocuLens grounds every answer in the exact page and quote it came from, and says so when the document doesn't have the answer.",
+    ogAlt: "DocuLens — ask your documents, with evidence",
+    manifestDescription: "Upload a PDF, then ask it questions or request analysis grounded in exact page evidence.",
+  },
+  format: {
+    pageSingular: "Page {page}",
+    pageRange: "Pages {start}–{end}",
+  },
+};
+
+export default en;

@@ -95,11 +95,33 @@ jobs:
       - name: Build
         if: steps.frontend.outputs.available == 'true'
         run: ${{ steps.frontend.outputs.manager }} run build
+        env:
+          # Production builds intentionally require an absolute public origin.
+          # Use a reserved domain in CI; deployments provide their real origin.
+          DOCULENS_SITE_URL: https://doculens.example.com
 
   backend:
     name: Backend
     runs-on: ubuntu-latest
     timeout-minutes: 15
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: doculens_test
+          POSTGRES_USER: doculens_test
+          POSTGRES_PASSWORD: doculens_test_only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U doculens_test -d doculens_test"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+
+    env:
+      TEST_DATABASE_URL: postgresql+asyncpg://doculens_test:doculens_test_only@localhost:5432/doculens_test
 
     steps:
       - name: Check out repository

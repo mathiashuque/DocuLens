@@ -1,0 +1,92 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${API_HOST_PORT:-8000}:8000"
+    environment:
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-10}
+      MAX_DOCUMENT_PAGES: ${MAX_DOCUMENT_PAGES:-40}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      CLASSIFICATION_MODEL: ${CLASSIFICATION_MODEL:-gpt-4o-mini}
+      CLASSIFICATION_CONFIDENCE_THRESHOLD: ${CLASSIFICATION_CONFIDENCE_THRESHOLD:-0.65}
+      ANALYSIS_MODEL: ${ANALYSIS_MODEL:-gpt-4o-mini}
+      ANALYSIS_BUDGET_CHARS: ${ANALYSIS_BUDGET_CHARS:-12000}
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-text-embedding-3-small}
+      EMBEDDING_DIMENSION: ${EMBEDDING_DIMENSION:-1536}
+      EMBEDDING_MAX_BATCH_SIZE: ${EMBEDDING_MAX_BATCH_SIZE:-96}
+      EMBEDDING_MAX_QUERY_CHARS: ${EMBEDDING_MAX_QUERY_CHARS:-2000}
+      EMBEDDING_MAX_TOP_K: ${EMBEDDING_MAX_TOP_K:-20}
+      PUBLIC_DEMO_MODE: ${PUBLIC_DEMO_MODE:-false}
+      ANONYMOUS_SESSION_SECRET: ${ANONYMOUS_SESSION_SECRET:-}
+      MAX_ANALYSES_PER_DAY: ${MAX_ANALYSES_PER_DAY:-3}
+      MAX_INDEXES_PER_DAY: ${MAX_INDEXES_PER_DAY:-3}
+      MAX_QUESTIONS_PER_DOCUMENT: ${MAX_QUESTIONS_PER_DOCUMENT:-10}
+      ANONYMOUS_SESSION_MAX_AGE_SECONDS: ${ANONYMOUS_SESSION_MAX_AGE_SECONDS:-2592000}
+      # An explicit DATABASE_URL (for example, a Neon connection string) takes
+      # precedence. Otherwise use the local `db` service's in-network address.
+      DATABASE_URL: ${DATABASE_URL:-postgresql+asyncpg://${POSTGRES_USER:-doculens}:${POSTGRES_PASSWORD:-doculens_local_only}@db:5432/${POSTGRES_DB:-doculens}}
+    healthcheck:
+      test:
+        - "CMD"
+        - "python"
+        - "-c"
+        - "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=2)"
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: apps/web
+      dockerfile: Dockerfile
+      args:
+        # Baked in at build time: Next.js statically prerenders `/`,
+        # robots.txt, sitemap.xml, and the Open Graph image using this
+        # origin. See apps/web/lib/site-config.ts.
+        DOCULENS_SITE_URL: ${DOCULENS_SITE_URL:-http://localhost:${WEB_HOST_PORT:-3000}}
+    ports:
+      - "${WEB_HOST_PORT:-3000}:3000"
+    environment:
+      # Also needed at runtime (not just build time): routes that aren't
+      # fully static-prerendered call generateMetadata per-request, which
+      # reads this from process.env. See apps/web/lib/site-config.ts.
+      DOCULENS_SITE_URL: ${DOCULENS_SITE_URL:-http://localhost:${WEB_HOST_PORT:-3000}}
+      # `api` is the in-network service name; the web app never reaches the
+      # backend via localhost. Never prefix with NEXT_PUBLIC_ — the browser
+      # must never see this.
+      DOCULENS_API_BASE_URL: http://api:8000
+      PUBLIC_DEMO_MODE: ${PUBLIC_DEMO_MODE:-false}
+      ANONYMOUS_SESSION_SECRET: ${ANONYMOUS_SESSION_SECRET:-}
+      ANONYMOUS_SESSION_MAX_AGE_SECONDS: ${ANONYMOUS_SESSION_MAX_AGE_SECONDS:-2592000}
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-doculens}
+      POSTGRES_USER: ${POSTGRES_USER:-doculens}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-doculens_local_only}
+    volumes:
+      - doculens_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-doculens} -d ${POSTGRES_DB:-doculens}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+    # Not published to the host by default; local tooling that needs a direct
+    # connection can set POSTGRES_HOST_PORT and add a "ports" mapping.
+
+volumes:
+  doculens_pgdata:

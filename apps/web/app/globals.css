@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/*
+ * Small tokenized palette: a cool-neutral canvas behind white paper-like
+ * surfaces, deep ink text, one restrained indigo/cyan accent pair, and amber
+ * reserved for evidence warnings/insufficient-evidence states. Components
+ * reference these instead of scattering one-off hex values.
+ */
+@theme inline {
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
+  --font-mono:
+    ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+
+  --color-canvas: #eef1f6;
+  --color-canvas-strong: #e4e8f1;
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8f9fc;
+  --color-ink: #161a2e;
+  --color-ink-muted: #4c5268;
+  --color-ink-subtle: #6b718a;
+  --color-hairline: #dfe3ee;
+  --color-accent: #4338ca;
+  --color-accent-strong: #362d9c;
+  --color-accent-soft: #eef0fd;
+  --color-cyan: #0e7c8c;
+  --color-cyan-soft: #e7f6f8;
+
+  --radius-card: 0.875rem;
+  --radius-chip: 999px;
+
+  --shadow-card:
+    0 1px 2px 0 rgb(22 26 46 / 0.04), 0 10px 28px -14px rgb(22 26 46 / 0.16);
+  --shadow-card-hover:
+    0 2px 4px 0 rgb(22 26 46 / 0.06), 0 16px 32px -14px rgb(22 26 46 / 0.2);
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  font-feature-settings: "cv11", "ss01", "tnum";
+}
+
+::selection {
+  background-color: var(--color-accent-soft);
+  color: var(--color-accent-strong);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

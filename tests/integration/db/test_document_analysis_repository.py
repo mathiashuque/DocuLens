@@ -1,0 +1,427 @@
+"""Repository-level PostgreSQL integration tests for analysis persistence:
+constraints, idempotency lookup, ordering, and full provenance round trip."""
+
+import uuid
+
+import pytest
+from app.db.analysis_repository import AnalysisRepository
+from app.db.repository import DocumentRepository
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from agent.analysis.result import (
+    FindingResult,
+    GenericAnalysisResult,
+    ImportantDateResult,
+    RiskEvidenceResult,
+    RiskResult,
+)
+from agent.analysis.types import DocumentSummaryCandidate
+from agent.extractors.contract.result import (
+    ClauseResult,
+    ContractAnalysisResult,
+    ObligationResult,
+    PartyResult,
+    PaymentTermResult,
+)
+from agent.extractors.technical_spec.result import (
+    ConstraintResult,
+    DependencyResult,
+    RequirementResult,
+    TechnicalSpecAnalysisResult,
+)
+from ingestion.models import DocumentPage
+
+
+async def _seed_document(session: AsyncSession) -> uuid.UUID:
+    document = await DocumentRepository(session).create(
+        filename="memo.pdf",
+        content_hash="a" * 64,
+        status="parsed",
+        pages=[DocumentPage(page_number=1, text="The term renews automatically.")],
+    )
+    await session.commit()
+    return document.id
+
+
+def _result(**overrides: object) -> GenericAnalysisResult:
+    base: dict[str, object] = {
+        "summary": DocumentSummaryCandidate(
+            title="Memo", purpose="p", summary="s", key_topics=["renewal"]
+        ),
+        "findings": (
+            FindingResult(
+                id=uuid.uuid4(),
+                title="Auto-renewal",
+                description="d",
+                category="renewal",
+                importance="high",
+                source_page=1,
+                evidence="renews automatically",
+                confidence=0.9,
+            ),
+        ),
+        "important_dates": (
+            ImportantDateResult(
+                id=uuid.uuid4(),
+                label="Renewal",
+                raw_value="soon",
+                normalized_date=None,
+                source_page=1,
+                evidence="renews automatically",
+                confidence=0.5,
+            ),
+        ),
+        "risks": (
+            RiskResult(
+                id=uuid.uuid4(),
+                title="Auto-renewal risk",
+                description="d",
+                category="renewal",
+                severity="medium",
+                evidence=(RiskEvidenceResult(page=1, text="renews automatically"),),
+                confidence=0.6,
+            ),
+        ),
+        "provider": "openai",
+        "model": "gpt-4o-mini",
+        "latency_ms": 250,
+        "input_tokens": 900,
+        "output_tokens": 200,
+        "retry_count": 0,
+    }
+    base.update(overrides)
+    return GenericAnalysisResult(**base)  # type: ignore[arg-type]
+
+
+@pytest.mark.asyncio
+async def test_create_and_get_latest_completed_round_trips_full_provenance(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    created = await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.id == created.id
+    assert fetched.summary_purpose == "p"
+    assert fetched.summary_key_topics == ["renewal"]
+    assert len(fetched.findings) == 1
+    assert fetched.findings[0].evidence == "renews automatically"
+    assert len(fetched.important_dates) == 1
+    assert fetched.important_dates[0].normalized_date is None
+    assert len(fetched.risks) == 1
+    assert len(fetched.risks[0].evidence) == 1
+    assert fetched.risks[0].evidence[0].page == 1
+    assert fetched.status == "completed"
+
+
+def _contract_result() -> ContractAnalysisResult:
+    return ContractAnalysisResult(
+        parties=(
+            PartyResult(
+                id=uuid.uuid4(),
+                name="Northstar Hosting Ltd.",
+                role="provider",
+                source_page=1,
+                evidence="Northstar Hosting Ltd. (Provider)",
+                confidence=0.97,
+            ),
+        ),
+        obligations=(
+            ObligationResult(
+                id=uuid.uuid4(),
+                obligated_party="Provider",
+                description="Maintain 99.9% availability",
+                beneficiary="Customer",
+                conditions=(),
+                source_page=4,
+                evidence="Provider shall maintain 99.9% monthly availability",
+                confidence=0.94,
+            ),
+        ),
+        payment_terms=(
+            PaymentTermResult(
+                id=uuid.uuid4(),
+                payer="Customer",
+                payee="Provider",
+                amount_text="$1,000/month",
+                schedule_text="due monthly",
+                source_page=2,
+                evidence="Customer shall pay Provider $1,000/month",
+                confidence=0.9,
+            ),
+        ),
+        clauses=(
+            ClauseResult(
+                id=uuid.uuid4(),
+                category="renewal",
+                title="Auto-renewal",
+                description="Renews automatically each year",
+                conditions=(),
+                notice_period_text="30 days",
+                source_page=5,
+                evidence="renews automatically each year",
+                confidence=0.8,
+            ),
+        ),
+        provider="openai",
+        model="gpt-4o-mini",
+        latency_ms=400,
+        input_tokens=1200,
+        output_tokens=300,
+    )
+
+
+@pytest.mark.asyncio
+async def test_contract_result_round_trips_specialized_provenance(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    created = await repository.create(
+        document_id=document_id,
+        document_type="contract",
+        extractor="contract_terms",
+        result=_result(specialized=_contract_result()),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.id == created.id
+    assert fetched.extractor == "contract_terms"
+    assert len(fetched.contract_parties) == 1
+    assert fetched.contract_parties[0].name == "Northstar Hosting Ltd."
+    assert len(fetched.contract_obligations) == 1
+    assert fetched.contract_obligations[0].obligated_party == "Provider"
+    assert len(fetched.contract_payment_terms) == 1
+    assert fetched.contract_payment_terms[0].amount_text == "$1,000/month"
+    assert len(fetched.contract_clauses) == 1
+    assert fetched.contract_clauses[0].category == "renewal"
+
+
+@pytest.mark.asyncio
+async def test_non_contract_result_persists_no_contract_children(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.contract_parties == []
+    assert fetched.contract_obligations == []
+    assert fetched.contract_payment_terms == []
+    assert fetched.contract_clauses == []
+
+
+def _technical_spec_result() -> TechnicalSpecAnalysisResult:
+    return TechnicalSpecAnalysisResult(
+        requirements=(
+            RequirementResult(
+                id=uuid.uuid4(),
+                category="functional",
+                identifier="FR-12",
+                statement="Revoke active sessions",
+                priority="must",
+                actor="administrator",
+                measurable_criterion=None,
+                source_page=8,
+                evidence="FR-12: The service shall allow administrators to revoke active sessions.",
+                confidence=0.98,
+            ),
+        ),
+        constraints=(
+            ConstraintResult(
+                id=uuid.uuid4(),
+                category="performance",
+                statement="Response time limit",
+                value_text="under 200ms p95",
+                source_page=3,
+                evidence="Response time shall not exceed 200ms p95",
+                confidence=0.8,
+            ),
+        ),
+        dependencies=(
+            DependencyResult(
+                id=uuid.uuid4(),
+                name="Payment Gateway API",
+                dependency_type="external service",
+                description="Integrates with the external payment gateway",
+                source_page=5,
+                evidence="The system depends on the Payment Gateway API for billing",
+                confidence=0.7,
+            ),
+        ),
+        provider="openai",
+        model="gpt-4o-mini",
+        latency_ms=350,
+        input_tokens=1000,
+        output_tokens=250,
+    )
+
+
+@pytest.mark.asyncio
+async def test_technical_spec_result_round_trips_specialized_provenance(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    created = await repository.create(
+        document_id=document_id,
+        document_type="technical_specification",
+        extractor="technical_specification_requirements",
+        result=_result(specialized=_technical_spec_result()),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.id == created.id
+    assert fetched.extractor == "technical_specification_requirements"
+    assert len(fetched.technical_requirements) == 1
+    assert fetched.technical_requirements[0].identifier == "FR-12"
+    assert fetched.technical_requirements[0].category == "functional"
+    assert len(fetched.technical_constraints) == 1
+    assert fetched.technical_constraints[0].value_text == "under 200ms p95"
+    assert len(fetched.technical_dependencies) == 1
+    assert fetched.technical_dependencies[0].name == "Payment Gateway API"
+
+
+@pytest.mark.asyncio
+async def test_non_technical_spec_result_persists_no_technical_spec_children(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.technical_requirements == []
+    assert fetched.technical_constraints == []
+    assert fetched.technical_dependencies == []
+
+
+@pytest.mark.asyncio
+async def test_unknown_document_returns_none(session: AsyncSession) -> None:
+    repository = AnalysisRepository(session)
+
+    assert await repository.get_latest_completed(uuid.uuid4()) is None
+
+
+@pytest.mark.asyncio
+async def test_second_analysis_for_same_document_violates_unique_constraint(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+    await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(),
+    )
+    await session.commit()
+
+    with pytest.raises(IntegrityError):
+        await repository.create(
+            document_id=document_id,
+            document_type="generic",
+            extractor="generic",
+            result=_result(),
+        )
+    await session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_empty_findings_dates_risks_persist_as_empty_lists(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(findings=(), important_dates=(), risks=()),
+    )
+    await session.commit()
+
+    fetched = await repository.get_latest_completed(document_id)
+
+    assert fetched is not None
+    assert fetched.findings == []
+    assert fetched.important_dates == []
+    assert fetched.risks == []
+
+
+@pytest.mark.asyncio
+async def test_invalid_document_type_is_rejected_by_database(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+
+    with pytest.raises(IntegrityError):
+        await repository.create(
+            document_id=document_id,
+            document_type="invoice",
+            extractor="generic",
+            result=_result(),
+        )
+    await session.rollback()
+
+
+@pytest.mark.asyncio
+async def test_deleting_document_cascades_to_analysis_and_children(
+    session: AsyncSession,
+) -> None:
+    document_id = await _seed_document(session)
+    repository = AnalysisRepository(session)
+    await repository.create(
+        document_id=document_id,
+        document_type="generic",
+        extractor="generic",
+        result=_result(),
+    )
+    await session.commit()
+
+    document = await DocumentRepository(session).get(document_id)
+    assert document is not None
+    await session.delete(document)
+    await session.commit()
+
+    assert await repository.get_latest_completed(document_id) is None
