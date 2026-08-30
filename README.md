@@ -263,6 +263,75 @@ that session. Cache hits and curated demo reads are free. Cookie-based
 quotas are cost controls, not strong identity or complete abuse prevention;
 edge-level burst protection remains a deployment responsibility.
 
+## Deploy the API to Render with Neon
+
+The repository includes a Render Blueprint at [`render.yaml`](render.yaml). It
+builds the root [`Dockerfile`](Dockerfile), exposes the FastAPI service, and
+checks `/health`. The database is kept separately on Neon's permanent free
+tier because Render's free PostgreSQL databases expire after 30 days.
+
+### 1. Create and migrate the Neon database
+
+1. Create a Neon project and copy its connection string. Keep
+   `sslmode=require`; the application converts the standard PostgreSQL URL to
+   the async driver format it needs. Do not commit the URL.
+2. Build the same API image that Render will run:
+
+   ```sh
+   docker build -t doculens-api .
+   ```
+
+3. Put the Neon URL in a temporary shell variable without adding it to shell
+   history, then apply all migrations:
+
+   ```sh
+   read -r -s DOCULENS_NEON_DATABASE_URL
+   docker run --rm \
+     -e DATABASE_URL="$DOCULENS_NEON_DATABASE_URL" \
+     doculens-api \
+     alembic -c apps/api/alembic.ini upgrade head
+   unset DOCULENS_NEON_DATABASE_URL
+   ```
+
+   Paste the connection string at the silent `read` prompt and press Enter.
+   Migration `0007` enables Neon's supported `vector` extension. Render's
+   pre-deploy command is unavailable on free web services, so repeat this
+   explicit migration step before deploying a revision that adds migrations.
+
+### 2. Create the Render API service
+
+1. In Render, choose **New > Blueprint**, connect this GitHub repository, and
+   select `render.yaml`.
+2. Provide the prompted secret values:
+
+   - `DATABASE_URL`: the same Neon connection string.
+   - `OPENAI_API_KEY`: the server-side OpenAI API key.
+   - `ANONYMOUS_SESSION_SECRET`: a unique value generated with
+     `openssl rand -hex 32`. Save this value for the Vercel setup.
+
+3. Deploy the Blueprint. Once Render reports the service live, verify its
+   public URL:
+
+   ```sh
+   curl --fail https://YOUR-RENDER-SERVICE.onrender.com/health
+   ```
+
+   A successful response is `{"status":"ok"}`. A free Render service spins
+   down after 15 idle minutes, so its first request after an idle period can
+   take about a minute.
+
+### 3. Connect the Vercel frontend
+
+Configure these server-side Vercel variables when deploying `apps/web`:
+
+- `DOCULENS_API_BASE_URL=https://YOUR-RENDER-SERVICE.onrender.com`
+- `PUBLIC_DEMO_MODE=true`
+- `ANONYMOUS_SESSION_SECRET`: exactly the same value used on Render
+- `DOCULENS_SITE_URL`: the final public Vercel origin
+
+None of these variables should use a `NEXT_PUBLIC_` prefix. The browser calls
+same-origin Next.js handlers, which proxy requests to the API.
+
 ## Testing and evaluation
 
 Frontend checks:
